@@ -1,0 +1,7 @@
+*.user
+*.suo
+bin
+obj
+Bin
+_ReSharper*
+*.dotCover
