@@ -23,11 +23,14 @@
 		<Grid Grid.Column="0" Grid.Row="0">
 			<Grid.RowDefinitions>
 				<RowDefinition />
-				<RowDefinition Height="20" />
+				<RowDefinition Height="Auto" />
 			</Grid.RowDefinitions>
 			
 			<TextBox Grid.Row="0" Text="{Binding Input,UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" AcceptsTab="True" />
-			<CheckBox Grid.Row="1" IsChecked="{Binding DebugTree}">Show Tree</CheckBox>
+			<StackPanel Grid.Row="1" Orientation="Horizontal" Margin="4">
+				<CheckBox IsChecked="{Binding DebugTree}">Show Tree</CheckBox>
+				<CheckBox IsChecked="{Binding ShowCompilerErrors}" Margin="10,0,0,0">Show Compiler Errors</CheckBox>
+			</StackPanel>
 		</Grid>
 		<TextBox Grid.Column="1" Grid.Row="0" Text="{Binding Output,Mode=OneWay}" />
 		<TextBox Grid.ColumnSpan="2" Grid.Row="1" Text="{Binding Debug,Mode=OneWay}" Height="400" Visibility="{Binding DebugTree, Converter={StaticResource blnVisibility}}" />

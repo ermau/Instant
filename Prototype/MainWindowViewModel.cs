@@ -95,7 +95,23 @@ namespace LiveCSharp
 			}
 		}
 
-		private bool showDebugTree;
+		public bool ShowCompilerErrors
+		{
+			get { return this.showCompilerErrors; }
+			set
+			{
+				if (this.showCompilerErrors == value)
+					return;
+
+				this.showCompilerErrors = value;
+				OnPropertyChanged ("ShowCompilerErrors");
+
+				if (value)
+					ProcessInput();
+			}
+		}
+
+		private bool showDebugTree, showCompilerErrors;
 		private string input, output, debug = "Initializing";
 
 		private void OnPropertyChanged (string property)
@@ -184,7 +200,9 @@ namespace LiveCSharp
 				}
 				catch (CompilationErrorException cex)
 				{
-					//Output = this.lastOutput + Environment.NewLine + cex.ToString();
+					if (ShowCompilerErrors)
+						Output = this.lastOutput + Environment.NewLine + cex.ToString();
+
 					return;
 				}
 				catch (OutOfMemoryException)
