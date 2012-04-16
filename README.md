@@ -6,4 +6,5 @@ sized .NET project. The original idea for this comes from
 There is currently a standalone prototype, and while this demos nicely,
 it really doesn't prove that it's possible to enable this type of feature
 on a full project. So the goal is to expand to multiple files, and eventually
-a Visual Studio and MonoDevelop plugin.
+a Visual Studio and MonoDevelop plugin. The prototype is built on .NET 4.0 and
+the [Roslyn CTP](http://msdn.com/roslyn).
