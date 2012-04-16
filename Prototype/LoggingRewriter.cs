@@ -42,23 +42,6 @@ namespace LiveCSharp
 			return base.VisitPrefixUnaryExpression (node);
 		}
 
-		//protected override SyntaxNode VisitPostfixUnaryExpression(PostfixUnaryExpressionSyntax node)
-		//{				
-		//    IdentifierNameSyntax name = node.Operand as IdentifierNameSyntax;
-		//    if (name != null)
-		//    {
-		//        switch (node.Kind)
-		//        {
-		//            // BUG: Outputs value of var before increment/decrement
-		//            case SyntaxKind.PostDecrementExpression:
-		//            case SyntaxKind.PostIncrementExpression:
-		//                return GetLogExpression (name.PlainName, node);
-		//        }
-		//    }
-
-		//    return base.VisitPostfixUnaryExpression(node);
-		//}
-
 		protected override SyntaxNode VisitVariableDeclarator (VariableDeclaratorSyntax node)
 		{
 			if (node.InitializerOpt == null)
