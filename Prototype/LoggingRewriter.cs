@@ -116,7 +116,12 @@ namespace LiveCSharp
 			if (node == null)
 				return results;
 
-			List<StatementSyntax> statements = new List<StatementSyntax> (node.Statements.Count + 2);
+			bool loopBlock = (node.Parent != null && node.Parent.HasAnnotation (this.isLoop));
+
+			List<StatementSyntax> statements = new List<StatementSyntax> (node.Statements.Count + 4);
+			if (loopBlock)
+				statements.Add (Syntax.ParseStatement ("BeginInsideLoop();"));
+
 			foreach (StatementSyntax statement in node.Statements)
 			{
 				bool loop = statement.HasAnnotation (this.isLoop);
@@ -140,6 +145,9 @@ namespace LiveCSharp
 				if (loop)
 					statements.Add (Syntax.ParseStatement ("EndLoop();" + Environment.NewLine));
 			}
+
+			if (loopBlock)
+				statements.Add (Syntax.ParseStatement ("EndInsideLoop();"));
 			
 			return node.Update (node.OpenBraceToken, Syntax.List<StatementSyntax> (statements), node.CloseBraceToken);
 		}
@@ -148,21 +156,9 @@ namespace LiveCSharp
 
 		protected override SyntaxNode VisitWhileStatement (WhileStatementSyntax node)
 		{
-			BlockSyntax block = node.DescendentNodes().OfType<BlockSyntax>().SingleOrDefault();
-			if (block == null)
-				block = Syntax.Block (statements: node.Statement);
+			if (!node.DescendentNodes().OfType<BlockSyntax>().Any())
+				node = node.Update (node.WhileKeyword, node.OpenParenToken, node.Condition, node.CloseParenToken, Syntax.Block (statements: node.Statement));
 
-			var statements = new[]
-			{
-				Syntax.ParseStatement ("BeginInsideLoop();")
-			}.Concat (block.Statements).Concat(new[]
-			{
-				Syntax.ParseStatement ("EndInsideLoop();")
-			});
-
-			block = block.Update (block.OpenBraceToken, Syntax.List (statements), block.CloseBraceToken);
-
-			node = node.Update (node.WhileKeyword, node.OpenParenToken, node.Condition, node.CloseParenToken, block);
 			return base.VisitWhileStatement ((WhileStatementSyntax)node.WithAdditionalAnnotations (this.isLoop));
 		}
 
@@ -171,9 +167,9 @@ namespace LiveCSharp
 			if (!node.DescendentNodes().OfType<BlockSyntax>().Any())
 			{
 				node = node.Update (node.ForKeyword, node.OpenParenToken, node.DeclarationOpt,
-				                    node.Initializers, node.FirstSemicolonToken, node.ConditionOpt,
-				                    node.SecondSemicolonToken, node.Incrementors, node.CloseParenToken,
-				                    Syntax.Block (statements: node.Statement));
+									node.Initializers, node.FirstSemicolonToken, node.ConditionOpt,
+									node.SecondSemicolonToken, node.Incrementors, node.CloseParenToken,
+									Syntax.Block (statements: node.Statement));
 			}
 
 			return base.VisitForStatement ((ForStatementSyntax)node.WithAdditionalAnnotations (this.isLoop));
@@ -184,11 +180,22 @@ namespace LiveCSharp
 			if (!node.DescendentNodes().OfType<BlockSyntax>().Any())
 			{
 				node = node.Update (node.ForEachKeyword, node.OpenParenToken, node.Type,
-				                    node.Identifier, node.InKeyword, node.Expression, node.CloseParenToken,
-				                    Syntax.Block (statements: node.Statement));
+									node.Identifier, node.InKeyword, node.Expression, node.CloseParenToken,
+									Syntax.Block (statements: node.Statement));
 			}
 
 			return base.VisitForEachStatement ((ForEachStatementSyntax)node.WithAdditionalAnnotations (this.isLoop));
+		}
+
+		protected override SyntaxNode VisitDoStatement (DoStatementSyntax node)
+		{
+			if (!node.DescendentNodes().OfType<BlockSyntax>().Any())
+			{
+				node = node.Update (node.DoKeyword, Syntax.Block (statements: node.Statement), node.WhileKeyword,
+									node.OpenParenToken, node.Condition, node.CloseParenToken, node.SemicolonToken);
+			}
+
+			return base.VisitDoStatement ((DoStatementSyntax) node.WithAdditionalAnnotations (this.isLoop));
 		}
 
 		protected override SyntaxNode VisitIfStatement (IfStatementSyntax node)
