@@ -111,6 +111,20 @@ namespace LiveCSharp
 			}
 		}
 
+		public int ExecutionTimeout
+		{
+			get { return this.timeout; }
+			set
+			{
+				if (this.timeout == value)
+					return;
+
+				this.timeout = value;
+				OnPropertyChanged ("ExecutionTimeout");
+			}
+		}
+
+		private int timeout = 5000;
 		private bool showDebugTree, showCompilerErrors;
 		private string input, output, debug = "Initializing";
 
@@ -176,7 +190,7 @@ namespace LiveCSharp
 					cancel.Cancel();
 					cancel.Dispose();
 				}
-			}, null, 30000, Timeout.Infinite);
+			}, null, ExecutionTimeout, Timeout.Infinite);
 
 			Task.Factory.StartNew (s =>
 			{

@@ -7,11 +7,17 @@
 			<Setter Property="FontFamily" Value="Consolas" />
 		</Style>
 		
+		<Style TargetType="CheckBox">
+			<Setter Property="Margin" Value="4" />
+			<Setter Property="VerticalAlignment" Value="Center" />
+		</Style>
+		
 		<BooleanToVisibilityConverter x:Key="blnVisibility" />
 	</Window.Resources>
 	<Grid>
 		<Grid.ColumnDefinitions>
 			<ColumnDefinition Width="50*" />
+			<ColumnDefinition />
 			<ColumnDefinition Width="50*" />
 		</Grid.ColumnDefinitions>
 		
@@ -27,12 +33,14 @@
 			</Grid.RowDefinitions>
 			
 			<TextBox Grid.Row="0" Text="{Binding Input,UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" AcceptsTab="True" />
-			<StackPanel Grid.Row="1" Orientation="Horizontal" Margin="4">
-				<CheckBox IsChecked="{Binding DebugTree}">Show Tree</CheckBox>
-				<CheckBox IsChecked="{Binding ShowCompilerErrors}" Margin="10,0,0,0">Show Compiler Errors</CheckBox>
+			<StackPanel Grid.Row="1" Orientation="Horizontal">
+				<Label Target="{Binding ElementName=timeout}">Time_out (ms):</Label>
+				<TextBox Name="timeout" Margin="4" Text="{Binding ExecutionTimeout}" Width="50" />
+				<CheckBox IsChecked="{Binding DebugTree}">Show _Tree</CheckBox>
+				<CheckBox IsChecked="{Binding ShowCompilerErrors}">Show Compiler _Errors</CheckBox>
 			</StackPanel>
 		</Grid>
 		<TextBox Grid.Column="1" Grid.Row="0" Text="{Binding Output,Mode=OneWay}" />
-		<TextBox Grid.ColumnSpan="2" Grid.Row="1" Text="{Binding Debug,Mode=OneWay}" Height="400" Visibility="{Binding DebugTree, Converter={StaticResource blnVisibility}}" />
+		<TextBox Grid.ColumnSpan="3" Grid.Row="1" Text="{Binding Debug,Mode=OneWay}" Height="400" Visibility="{Binding DebugTree, Converter={StaticResource blnVisibility}}" />
 	</Grid>
 </Window>
