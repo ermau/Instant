@@ -53,12 +53,12 @@ namespace LiveCSharp
 			return node.Update (node.Identifier, null, equals);
 		}
 
-		private bool haveReturned;
 		protected override SyntaxNode VisitReturnStatement (ReturnStatementSyntax node)
 		{
-			this.haveReturned = true;
-			return node.Update (node.ReturnKeyword,
-				GetReturnExpression (this.currentMethod.Identifier.ValueText, node.ExpressionOpt.ToString()), node.SemicolonToken);
+			if (node.ExpressionOpt == null)
+				return base.VisitReturnStatement (node);
+
+			return node.Update (node.ReturnKeyword, GetReturnExpression (this.currentMethod.Identifier.ValueText, node.ExpressionOpt.ToString()), node.SemicolonToken);
 		}
 
 		protected override SyntaxNode VisitBinaryExpression (BinaryExpressionSyntax node)
