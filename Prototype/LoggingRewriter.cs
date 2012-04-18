@@ -67,6 +67,19 @@ namespace LiveCSharp
 			return node.Update (node.ReturnKeyword, GetReturnExpression (this.currentMethod.Identifier.ValueText, node.ExpressionOpt.ToString()), node.SemicolonToken);
 		}
 
+		private IdentifierNameSyntax FindIdentifierName (ExpressionSyntax expression)
+		{
+			IdentifierNameSyntax name = expression as IdentifierNameSyntax;
+			if (name != null)
+				return name;
+
+			BinaryExpressionSyntax binaryExpression = expression as BinaryExpressionSyntax;
+			if (binaryExpression != null)
+				return FindIdentifierName (binaryExpression.Right);
+
+			return null;
+		}
+
 		protected override SyntaxNode VisitBinaryExpression (BinaryExpressionSyntax node)
 		{
 			switch (node.Kind)
@@ -82,9 +95,11 @@ namespace LiveCSharp
 				case SyntaxKind.OrAssignExpression:
 				case SyntaxKind.RightShiftAssignExpression:
 				case SyntaxKind.SubtractAssignExpression:
+					var nameSyntax = FindIdentifierName (node.Left);
+					if (nameSyntax != null)
+						return node.Update (node.Left, node.OperatorToken, GetLogExpression (nameSyntax.PlainName, node.Right));
 
-					string name = ((IdentifierNameSyntax) node.Left).PlainName;
-					return node.Update (node.Left, node.OperatorToken, GetLogExpression (name, node.Right));
+					return base.VisitBinaryExpression (node);
 
 				default:
 					return base.VisitBinaryExpression (node);
