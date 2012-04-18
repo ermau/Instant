@@ -30,6 +30,12 @@ namespace LiveCSharp
 			CancelToken = cancelToken;
 		}
 
+		public int MaximumLoops
+		{
+			get;
+			set;
+		}
+
 		public readonly CancellationToken CancelToken;
 
 		private int loopLevel;
@@ -94,6 +100,12 @@ namespace LiveCSharp
 			int lcount = valueLists.Max (l => l.Count);
 			for (int i = 0; i < lcount; ++i)
 			{
+				if (i == MaximumLoops && i != 0)
+				{
+					this.builder.AppendLine (String.Format ("{0:N0} loops not shown", lcount - MaximumLoops));
+					break;
+				}
+
 				object[] vs = new object[valueLists.Length];
 				for (int n = 0; n < valueLists.Length; ++n)
 				{

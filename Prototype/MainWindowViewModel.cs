@@ -111,6 +111,19 @@ namespace LiveCSharp
 			}
 		}
 
+		public int MaximumLoops
+		{
+			get { return this.maxLoops; }
+			set
+			{
+				if (this.maxLoops == value)
+					return;
+
+				this.maxLoops = value;
+				OnPropertyChanged ("MaximumLoops");
+			}
+		}
+
 		public int ExecutionTimeout
 		{
 			get { return this.timeout; }
@@ -124,7 +137,7 @@ namespace LiveCSharp
 			}
 		}
 
-		private int timeout = 5000;
+		private int timeout = 5000, maxLoops = 100;
 		private bool showDebugTree, showCompilerErrors;
 		private string input, output, debug = "Initializing";
 
@@ -181,6 +194,7 @@ namespace LiveCSharp
 			}
 
 			StringObjectLogger logger = new StringObjectLogger (this.cancelSource.Token);
+			logger.MaximumLoops = MaximumLoops;
 
 			new Timer (o =>
 			{

@@ -37,6 +37,8 @@
 			<StackPanel Grid.Row="1" Orientation="Horizontal">
 				<Label Target="{Binding ElementName=timeout}">Time_out (ms):</Label>
 				<TextBox Name="timeout" Margin="4" Text="{Binding ExecutionTimeout}" Width="50" />
+				<Label Target="{Binding ElementName=loops}">_Max Loops:</Label>
+				<TextBox Name="loops" Margin="4" Text="{Binding MaximumLoops}" Width="40" />
 				<CheckBox IsChecked="{Binding DebugTree}">Show _Tree</CheckBox>
 				<CheckBox IsChecked="{Binding ShowCompilerErrors}">Show Compiler _Errors</CheckBox>
 			</StackPanel>
