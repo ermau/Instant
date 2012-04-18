@@ -110,6 +110,12 @@ namespace LiveCSharp
 			this.loopLevel--;
 		}
 
+		public void LogReturn()
+		{
+			while (this.loopLevel > 0)
+				EndLoop();
+		}
+
 		public T LogReturn<T> (T value)
 		{
 			while (this.loopLevel > 0)

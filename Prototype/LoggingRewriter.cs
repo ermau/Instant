@@ -26,6 +26,12 @@ namespace LiveCSharp
 	internal class LoggingRewriter
 		: SyntaxRewriter
 	{
+		private static readonly StatementSyntax ReturnStatement = Syntax.ParseStatement ("LogReturn();");
+		private static readonly StatementSyntax BeginLoopStatement = Syntax.ParseStatement ("BeginLoop();");
+		private static readonly StatementSyntax EndLoopStatement = Syntax.ParseStatement ("EndLoop();");
+		private static readonly StatementSyntax BeginInsideLoopStatement = Syntax.ParseStatement ("BeginInsideLoop();");
+		private static readonly StatementSyntax EndInsideLoopStatement = Syntax.ParseStatement ("EndInsideLoop();");
+
 		protected override SyntaxNode VisitPrefixUnaryExpression (PrefixUnaryExpressionSyntax node)
 		{
 			IdentifierNameSyntax name = node.Operand as IdentifierNameSyntax;
@@ -92,6 +98,7 @@ namespace LiveCSharp
 			return base.VisitMethodDeclaration (node);
 		}
 
+		private int loopLevel;
 		protected override SyntaxNode VisitBlock (BlockSyntax node)
 		{
 			var results = base.VisitBlock (node);
@@ -99,17 +106,21 @@ namespace LiveCSharp
 			if (node == null)
 				return results;
 
-			bool loopBlock = (node.Parent != null && node.Parent.HasAnnotation (this.isLoop));
-
 			List<StatementSyntax> statements = new List<StatementSyntax> (node.Statements.Count + 4);
-			if (loopBlock)
-				statements.Add (Syntax.ParseStatement ("BeginInsideLoop();"));
 
 			foreach (StatementSyntax statement in node.Statements)
 			{
 				bool loop = statement.HasAnnotation (this.isLoop);
 				if (loop)
-					statements.Add (Syntax.ParseStatement ("BeginLoop();" + Environment.NewLine));
+					statements.Add (BeginLoopStatement);
+
+				if (this.loopLevel > 0)
+				{
+					if (statement is ContinueStatementSyntax || statement is BreakStatementSyntax)
+						statements.Add (EndInsideLoopStatement);
+					else if (statement is ReturnStatementSyntax && ((ReturnStatementSyntax)statement).ExpressionOpt == null)
+						statements.Add (ReturnStatement);
+				}
 
 				statements.Add (statement);
 
@@ -126,12 +137,9 @@ namespace LiveCSharp
 				}
 
 				if (loop)
-					statements.Add (Syntax.ParseStatement ("EndLoop();" + Environment.NewLine));
+					statements.Add (EndLoopStatement);
 			}
 
-			if (loopBlock)
-				statements.Add (Syntax.ParseStatement ("EndInsideLoop();"));
-			
 			return node.Update (node.OpenBraceToken, Syntax.List<StatementSyntax> (statements), node.CloseBraceToken);
 		}
 
@@ -139,46 +147,46 @@ namespace LiveCSharp
 
 		protected override SyntaxNode VisitWhileStatement (WhileStatementSyntax node)
 		{
-			if (!node.DescendentNodes().OfType<BlockSyntax>().Any())
-				node = node.Update (node.WhileKeyword, node.OpenParenToken, node.Condition, node.CloseParenToken, Syntax.Block (statements: node.Statement));
+			node = node.Update (node.WhileKeyword, node.OpenParenToken, node.Condition, node.CloseParenToken,
+			                    GetLoopBlock (node.Statement));
 
 			return base.VisitWhileStatement ((WhileStatementSyntax)node.WithAdditionalAnnotations (this.isLoop));
 		}
 
 		protected override SyntaxNode VisitForStatement (ForStatementSyntax node)
 		{
-			if (!node.DescendentNodes().OfType<BlockSyntax>().Any())
-			{
-				node = node.Update (node.ForKeyword, node.OpenParenToken, node.DeclarationOpt,
-									node.Initializers, node.FirstSemicolonToken, node.ConditionOpt,
-									node.SecondSemicolonToken, node.Incrementors, node.CloseParenToken,
-									Syntax.Block (statements: node.Statement));
-			}
+			node = node.Update (node.ForKeyword, node.OpenParenToken, node.DeclarationOpt,
+			                    node.Initializers, node.FirstSemicolonToken, node.ConditionOpt,
+			                    node.SecondSemicolonToken, node.Incrementors, node.CloseParenToken,
+			                    GetLoopBlock (node.Statement));
 
-			return base.VisitForStatement ((ForStatementSyntax)node.WithAdditionalAnnotations (this.isLoop));
+			this.loopLevel++;
+			var statement = base.VisitForStatement ((ForStatementSyntax)node.WithAdditionalAnnotations (this.isLoop));
+			this.loopLevel--;
+			return statement;
 		}
 
 		protected override SyntaxNode VisitForEachStatement (ForEachStatementSyntax node)
 		{
-			if (!node.DescendentNodes().OfType<BlockSyntax>().Any())
-			{
-				node = node.Update (node.ForEachKeyword, node.OpenParenToken, node.Type,
-									node.Identifier, node.InKeyword, node.Expression, node.CloseParenToken,
-									Syntax.Block (statements: node.Statement));
-			}
+			node = node.Update (node.ForEachKeyword, node.OpenParenToken, node.Type,
+			                    node.Identifier, node.InKeyword, node.Expression, node.CloseParenToken,
+			                    GetLoopBlock (node.Statement));
 
-			return base.VisitForEachStatement ((ForEachStatementSyntax)node.WithAdditionalAnnotations (this.isLoop));
+			this.loopLevel++;
+			var statement = base.VisitForEachStatement ((ForEachStatementSyntax)node.WithAdditionalAnnotations (this.isLoop));
+			this.loopLevel--;
+			return statement;
 		}
 
 		protected override SyntaxNode VisitDoStatement (DoStatementSyntax node)
 		{
-			if (!node.DescendentNodes().OfType<BlockSyntax>().Any())
-			{
-				node = node.Update (node.DoKeyword, Syntax.Block (statements: node.Statement), node.WhileKeyword,
-									node.OpenParenToken, node.Condition, node.CloseParenToken, node.SemicolonToken);
-			}
+			node = node.Update (node.DoKeyword, GetLoopBlock (node.Statement), node.WhileKeyword,
+			                    node.OpenParenToken, node.Condition, node.CloseParenToken, node.SemicolonToken);
 
-			return base.VisitDoStatement ((DoStatementSyntax) node.WithAdditionalAnnotations (this.isLoop));
+			this.loopLevel++;
+			var statement = base.VisitDoStatement ((DoStatementSyntax) node.WithAdditionalAnnotations (this.isLoop));
+			this.loopLevel--;
+			return statement;
 		}
 
 		protected override SyntaxNode VisitIfStatement (IfStatementSyntax node)
@@ -211,6 +219,21 @@ namespace LiveCSharp
 			}
 
 			return base.VisitIfStatement (node);
+		}
+
+		private BlockSyntax GetLoopBlock (StatementSyntax statement)
+		{
+			List<StatementSyntax> statements;
+			BlockSyntax block = statement as BlockSyntax;
+			if (block != null)
+				statements = new List<StatementSyntax> (block.Statements);
+			else
+				statements = new List<StatementSyntax>();
+
+			statements.Insert (0, BeginInsideLoopStatement);
+			statements.Add (EndInsideLoopStatement);
+
+			return Syntax.Block (statements: Syntax.List<StatementSyntax> (statements));
 		}
 
 		private ExpressionSyntax GetLogExpression (string name, SyntaxNode value)
