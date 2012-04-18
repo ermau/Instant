@@ -31,6 +31,7 @@ namespace LiveCSharp
 		private static readonly StatementSyntax EndLoopStatement = Syntax.ParseStatement ("EndLoop();");
 		private static readonly StatementSyntax BeginInsideLoopStatement = Syntax.ParseStatement ("BeginInsideLoop();");
 		private static readonly StatementSyntax EndInsideLoopStatement = Syntax.ParseStatement ("EndInsideLoop();");
+		private static readonly SyntaxToken AssignToken = Syntax.Token (SyntaxKind.EqualsToken);
 
 		protected override SyntaxNode VisitPrefixUnaryExpression (PrefixUnaryExpressionSyntax node)
 		{
@@ -80,26 +81,61 @@ namespace LiveCSharp
 			return null;
 		}
 
+		private SyntaxKind GetComplexAssignOperator (SyntaxKind kind)
+		{
+			switch (kind)
+			{
+				case SyntaxKind.AddAssignExpression:
+					return SyntaxKind.PlusToken;
+				case SyntaxKind.SubtractAssignExpression:
+					return SyntaxKind.MinusToken;
+				case SyntaxKind.MultiplyAssignExpression:
+					return SyntaxKind.AsteriskToken;
+				case SyntaxKind.DivideAssignExpression:
+					return SyntaxKind.SlashToken;
+				case SyntaxKind.AndAssignExpression:
+					return SyntaxKind.AmpersandToken;
+				case SyntaxKind.OrAssignExpression:
+					return SyntaxKind.BarToken;
+				//case SyntaxKind.ExclusiveOrAssignExpression:
+				case SyntaxKind.RightShiftAssignExpression:
+					return SyntaxKind.GreaterThanGreaterThanToken;
+				case SyntaxKind.LeftShiftAssignExpression:
+					return SyntaxKind.LessThanLessThanToken;
+				case SyntaxKind.ModuloAssignExpression:
+					return SyntaxKind.PercentToken;
+
+				default:
+					throw new ArgumentException();
+			}
+		}
+
 		protected override SyntaxNode VisitBinaryExpression (BinaryExpressionSyntax node)
 		{
+			var nameSyntax = FindIdentifierName (node.Left);
+			if (nameSyntax == null)
+				return base.VisitBinaryExpression (node);
+
 			switch (node.Kind)
 			{
-				case SyntaxKind.AssignExpression:
-				case SyntaxKind.AndAssignExpression:
-				case SyntaxKind.DivideAssignExpression:
 				case SyntaxKind.AddAssignExpression:
-				case SyntaxKind.ModuloAssignExpression:
-				case SyntaxKind.ExclusiveOrAssignExpression:
-				case SyntaxKind.LeftShiftAssignExpression:
-				case SyntaxKind.MultiplyAssignExpression:
 				case SyntaxKind.OrAssignExpression:
-				case SyntaxKind.RightShiftAssignExpression:
 				case SyntaxKind.SubtractAssignExpression:
-					var nameSyntax = FindIdentifierName (node.Left);
-					if (nameSyntax != null)
-						return node.Update (node.Left, node.OperatorToken, GetLogExpression (nameSyntax.PlainName, node.Right));
+				case SyntaxKind.MultiplyAssignExpression:
+				case SyntaxKind.DivideAssignExpression:
+				case SyntaxKind.ModuloAssignExpression:
+				case SyntaxKind.RightShiftAssignExpression:
+				case SyntaxKind.LeftShiftAssignExpression:
+				case SyntaxKind.AndAssignExpression:
+				case SyntaxKind.ExclusiveOrAssignExpression:
+					var token = Syntax.Token (GetComplexAssignOperator (node.Kind));
 
-					return base.VisitBinaryExpression (node);
+					ExpressionSyntax expr = Syntax.ParseExpression (nameSyntax.PlainName + token + node.Right);
+
+					return node.Update (node.Left, AssignToken, GetLogExpression (nameSyntax.PlainName, expr));
+
+				case SyntaxKind.AssignExpression:
+					return node.Update (node.Left, node.OperatorToken, GetLogExpression (nameSyntax.PlainName, node.Right));
 
 				default:
 					return base.VisitBinaryExpression (node);
