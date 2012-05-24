@@ -35,7 +35,7 @@ namespace LiveCSharp
 
 		protected override SyntaxNode VisitPrefixUnaryExpression (PrefixUnaryExpressionSyntax node)
 		{
-			IdentifierNameSyntax name = node.Operand as IdentifierNameSyntax;
+			IdentifierNameSyntax name = FindIdentifierName (node.Operand);
 			if (name != null)
 			{
 				switch (node.Kind)
