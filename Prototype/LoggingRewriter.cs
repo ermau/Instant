@@ -51,6 +51,10 @@ namespace LiveCSharp
 
 		protected override SyntaxNode VisitVariableDeclarator (VariableDeclaratorSyntax node)
 		{
+			var newNode = base.VisitVariableDeclarator (node);
+			if ((node = newNode as VariableDeclaratorSyntax) == null)
+				return newNode;
+
 			if (node.InitializerOpt == null)
 				return base.VisitVariableDeclarator (node);
 
@@ -113,6 +117,11 @@ namespace LiveCSharp
 
 		protected override SyntaxNode VisitBinaryExpression (BinaryExpressionSyntax node)
 		{
+			var newNode = base.VisitBinaryExpression (node);
+			node = newNode as BinaryExpressionSyntax;
+			if (node == null)
+				return newNode;
+
 			var nameSyntax = FindIdentifierName (node.Left);
 			if (nameSyntax == null)
 				return base.VisitBinaryExpression (node);
@@ -139,7 +148,7 @@ namespace LiveCSharp
 					return node.Update (node.Left, node.OperatorToken, GetLogExpression (nameSyntax.PlainName, node.Right));
 
 				default:
-					return base.VisitBinaryExpression (node);
+				return node;
 			}
 		}
 
