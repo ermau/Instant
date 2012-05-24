@@ -97,7 +97,8 @@ namespace LiveCSharp
 					return SyntaxKind.AmpersandToken;
 				case SyntaxKind.OrAssignExpression:
 					return SyntaxKind.BarToken;
-				//case SyntaxKind.ExclusiveOrAssignExpression:
+				case SyntaxKind.ExclusiveOrAssignExpression:
+					return SyntaxKind.CaretToken;
 				case SyntaxKind.RightShiftAssignExpression:
 					return SyntaxKind.GreaterThanGreaterThanToken;
 				case SyntaxKind.LeftShiftAssignExpression:
