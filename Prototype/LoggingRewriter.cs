@@ -62,7 +62,7 @@ namespace LiveCSharp
 
 		protected override SyntaxNode VisitReturnStatement (ReturnStatementSyntax node)
 		{
-			if (node.ExpressionOpt == null)
+			if (node.ExpressionOpt == null || this.currentMethod == null)
 				return base.VisitReturnStatement (node);
 
 			return node.Update (node.ReturnKeyword, GetReturnExpression (this.currentMethod.Identifier.ValueText, node.ExpressionOpt.ToString()), node.SemicolonToken);
