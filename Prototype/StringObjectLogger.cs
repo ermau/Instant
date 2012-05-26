@@ -162,6 +162,14 @@ namespace LiveCSharp
 			return value;
 		}
 
+		public TExpr LogPostfixValues<TExpr> (TExpr expression, params Tuple<string, object>[] values)
+		{
+			foreach (var tuple in values)
+				LogObject (tuple.Item1, tuple.Item2);
+
+			return expression;
+		}
+
 		public string Output
 		{
 			get { return this.builder.ToString(); }
