@@ -82,6 +82,14 @@ namespace LiveCSharp
 			if (binaryExpression != null)
 				return FindIdentifierName (binaryExpression.Right);
 
+			PostfixUnaryExpressionSyntax postfixUnaryExpression = expression as PostfixUnaryExpressionSyntax;
+			if (postfixUnaryExpression != null)
+				return FindIdentifierName (postfixUnaryExpression.Operand);
+
+			PrefixUnaryExpressionSyntax prefixUnaryExpression = expression as PrefixUnaryExpressionSyntax;
+			if (prefixUnaryExpression != null)
+				return FindIdentifierName (prefixUnaryExpression.Operand);
+
 			return null;
 		}
 
