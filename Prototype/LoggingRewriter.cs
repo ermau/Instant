@@ -132,7 +132,7 @@ namespace LiveCSharp
 
 			var nameSyntax = FindIdentifierName (node.Left);
 			if (nameSyntax == null)
-				return base.VisitBinaryExpression (node);
+				return newNode;
 
 			switch (node.Kind)
 			{
