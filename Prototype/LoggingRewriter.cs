@@ -80,34 +80,42 @@ namespace LiveCSharp
 			if (expressions.Length == 0)
 				return node;
 
-			// We'll use a string builder construct our expression.
-			StringBuilder builder = new StringBuilder ("LogPostfixValues ((");
-			builder.Append (node.ToString());
-			builder.Append ("), ");
-
-			HashSet<string> names = new HashSet<string>();
-
-			bool found = false;
+			List<string> names = new List<string> (expressions.Length);
 			foreach (var expr in expressions)
 			{
 				if (expr.Kind != SyntaxKind.PostIncrementExpression && expr.Kind != SyntaxKind.PostDecrementExpression)
 					continue; // These aren't the droids we're looking for.
 
 				IdentifierNameSyntax name = FindIdentifierName (expr);
-				if (name == null || names.Contains (name.PlainName))
-					continue; // We didn't find a name, or it was already logged
+				if (name == null)
+					continue; // We didn't find a name
 
-				names.Add (name.PlainName);
+				if (names.Contains (name.PlainName))
+				{
+					var newExpr = GetLogExpression (name.PlainName, expr);
+					node = node.ReplaceNode (expr, newExpr);
+				}
+				else
+					names.Add (name.PlainName);
+			}
 
+			// We'll use a string builder construct our expression.
+			StringBuilder builder = new StringBuilder ("LogPostfixValues ((");
+			builder.Append (node.ToString());
+			builder.Append ("), ");
+
+			bool found = false;
+			foreach (string name in names)
+			{
 				if (found)
 					builder.Append (", ");
 
 				// We need to specify our generic types so we match
 				// the params argument type
 				builder.Append ("new Tuple<string, object> (\"");
-				builder.Append (name.PlainName);
+				builder.Append (name);
 				builder.Append ("\", ");
-				builder.Append (name.PlainName);
+				builder.Append (name);
 				builder.Append (")");
 				found = true;
 			}
