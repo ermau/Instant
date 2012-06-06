@@ -147,7 +147,7 @@ namespace LiveCSharp
 				if (!this.values.TryGetValue (name, out vs))
 				{
 					this.values [name] = vs = new List<object>();
-					vs.AddRange(Enumerable.Repeat (Skipped, this.iteration));
+					vs.AddRange (Enumerable.Repeat (Skipped, this.iteration));
 				}
 
 				vs.Add (value);
@@ -161,11 +161,10 @@ namespace LiveCSharp
 
 			return value;
 		}
-
-		public TExpr LogPostfixValues<TExpr> (TExpr expression, params Tuple<string, object>[] values)
+		
+		public T LogPostfix<T> (T expression, string name, T newValue)
 		{
-			foreach (var tuple in values)
-				LogObject (tuple.Item1, tuple.Item2);
+			LogObject (name, newValue);
 
 			return expression;
 		}

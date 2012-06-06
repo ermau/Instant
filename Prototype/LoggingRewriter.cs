@@ -34,9 +34,9 @@ namespace LiveCSharp
 		private static readonly StatementSyntax EndInsideLoopStatement = Syntax.ParseStatement ("EndInsideLoop();");
 		private static readonly SyntaxToken AssignToken = Syntax.Token (SyntaxKind.EqualsToken);
 
-		protected override SyntaxNode VisitPrefixUnaryExpression (PrefixUnaryExpressionSyntax node)
+		public override SyntaxNode VisitPrefixUnaryExpression (PrefixUnaryExpressionSyntax node)
 		{
-			IdentifierNameSyntax name = FindIdentifierName (node.Operand);
+			IdentifierNameSyntax name = FindIdentifierName (node);
 			if (name != null)
 			{
 				switch (node.Kind)
@@ -50,118 +50,40 @@ namespace LiveCSharp
 			return base.VisitPrefixUnaryExpression (node);
 		}
 
-		protected SeparatedSyntaxList<ExpressionSyntax> RewritePostfixUnarys (SeparatedSyntaxList<ExpressionSyntax> nodes)
+		public override SyntaxNode VisitPostfixUnaryExpression(PostfixUnaryExpressionSyntax node)
 		{
-			if (nodes.Count == 0)
-				return nodes;
-
-			List<ExpressionSyntax> expressions = new List<ExpressionSyntax> (nodes.Count);
-			foreach (var node in nodes)
+			IdentifierNameSyntax name = FindIdentifierName (node);
+			if (name != null)
 			{
-				var newNode = RewritePostfixUnarys (node);
-				if (newNode != null)
-					expressions.Add (newNode);
-			}
-
-			return Syntax.SeparatedList (expressions, Enumerable.Repeat (Syntax.Token (SyntaxKind.CommaToken), expressions.Count - 1));
-		}
-
-		protected SyntaxList<ExpressionSyntax> RewritePostfixUnarys (SyntaxList<ExpressionSyntax> nodes)
-		{
-			if (nodes.Count == 0)
-				return nodes;
-
-			return Syntax.List (nodes.Select (RewritePostfixUnarys));
-		}
-
-		protected ExpressionSyntax RewritePostfixUnarys (ExpressionSyntax node)
-		{
-			var expressions = node.DescendentNodesAndSelf().OfType<PostfixUnaryExpressionSyntax>().ToArray();
-			if (expressions.Length == 0)
-				return node;
-
-			List<string> names = new List<string> (expressions.Length);
-			foreach (var expr in expressions)
-			{
-				if (expr.Kind != SyntaxKind.PostIncrementExpression && expr.Kind != SyntaxKind.PostDecrementExpression)
-					continue; // These aren't the droids we're looking for.
-
-				IdentifierNameSyntax name = FindIdentifierName (expr);
-				if (name == null)
-					continue; // We didn't find a name
-
-				if (names.Contains (name.PlainName))
+				switch (node.Kind)
 				{
-					var newExpr = GetLogExpression (name.PlainName, expr);
-					node = node.ReplaceNode (expr, newExpr);
+					case SyntaxKind.PostIncrementExpression:
+					case SyntaxKind.PostDecrementExpression:
+						return Syntax.ParseExpression ("LogPostfix (" + node + ", \"" + name.PlainName + "\", " + name.PlainName + ")");
 				}
-				else
-					names.Add (name.PlainName);
 			}
 
-			// We'll use a string builder construct our expression.
-			StringBuilder builder = new StringBuilder ("LogPostfixValues ((");
-			builder.Append (node.ToString());
-			builder.Append ("), ");
-
-			bool found = false;
-			foreach (string name in names)
-			{
-				if (found)
-					builder.Append (", ");
-
-				// We need to specify our generic types so we match
-				// the params argument type
-				builder.Append ("new Tuple<string, object> (\"");
-				builder.Append (name);
-				builder.Append ("\", ");
-				builder.Append (name);
-				builder.Append (")");
-				found = true;
-			}
-
-			if (!found)
-				return node; // We didn't find any usable expressions
-
-			builder.Append (")");
-
-			// Parse and return our new expression.
-			return Syntax.ParseExpression (builder.ToString());
+			return base.VisitPostfixUnaryExpression(node);
 		}
 
-		protected override SyntaxNode VisitExpressionStatement (ExpressionStatementSyntax node)
-		{
-			ExpressionSyntax expression = RewritePostfixUnarys (node.Expression);
-			if (expression != node.Expression)
-				node = node.Update (expression, node.SemicolonToken);
-
-			return base.VisitExpressionStatement (node);
-		}
-
-		protected override SyntaxNode VisitVariableDeclarator (VariableDeclaratorSyntax node)
+		public override SyntaxNode VisitVariableDeclarator (VariableDeclaratorSyntax node)
 		{
 			var newNode = base.VisitVariableDeclarator (node);
 			if ((node = newNode as VariableDeclaratorSyntax) == null)
 				return newNode;
 
-			if (node.InitializerOpt == null)
+			if (node.Initializer == null)
 				return base.VisitVariableDeclarator (node);
 
-			EqualsValueClauseSyntax equals = node.InitializerOpt;
-
-			ExpressionSyntax value = RewritePostfixUnarys (equals.Value);
-			equals = equals.Update (equals.EqualsToken, GetLogExpression (node.Identifier.ValueText, value));
-
-			return node.Update (node.Identifier, null, equals);
+			return node.WithInitializer (node.Initializer.WithValue (GetLogExpression (node.Identifier.ValueText, node.Initializer.Value)));
 		}
 
-		protected override SyntaxNode VisitReturnStatement (ReturnStatementSyntax node)
+		public override SyntaxNode VisitReturnStatement (ReturnStatementSyntax node)
 		{
-			if (node.ExpressionOpt == null || this.currentMethod == null)
+			if (node.Expression == null || this.currentMethod == null)
 				return base.VisitReturnStatement (node);
 
-			ExpressionSyntax expression = RewritePostfixUnarys (node.ExpressionOpt);
-			return node.Update (node.ReturnKeyword, GetReturnExpression (this.currentMethod.Identifier.ValueText, expression.ToString()), node.SemicolonToken);
+			return node.WithExpression (GetReturnExpression (this.currentMethod.Identifier.ValueText, node.Expression.ToString()));
 		}
 
 		private IdentifierNameSyntax FindIdentifierName (ExpressionSyntax expression)
@@ -215,7 +137,7 @@ namespace LiveCSharp
 			}
 		}
 
-		protected override SyntaxNode VisitBinaryExpression (BinaryExpressionSyntax node)
+		public override SyntaxNode VisitBinaryExpression (BinaryExpressionSyntax node)
 		{
 			var newNode = base.VisitBinaryExpression (node);
 			node = newNode as BinaryExpressionSyntax;
@@ -245,7 +167,7 @@ namespace LiveCSharp
 					return node.Update (node.Left, AssignToken, GetLogExpression (nameSyntax.PlainName, expr));
 
 				case SyntaxKind.AssignExpression:
-					return node.Update (node.Left, node.OperatorToken, GetLogExpression (nameSyntax.PlainName, node.Right));
+					return node.WithRight (GetLogExpression (nameSyntax.PlainName, node.Right));
 
 				default:
 					return node;
@@ -253,14 +175,14 @@ namespace LiveCSharp
 		}
 
 		private MethodDeclarationSyntax currentMethod;
-		protected override SyntaxNode VisitMethodDeclaration (MethodDeclarationSyntax node)
+		public override SyntaxNode VisitMethodDeclaration (MethodDeclarationSyntax node)
 		{
 			this.currentMethod = node;
 			return base.VisitMethodDeclaration (node);
 		}
 
 		private int loopLevel;
-		protected override SyntaxNode VisitBlock (BlockSyntax node)
+		public override SyntaxNode VisitBlock (BlockSyntax node)
 		{
 			var results = base.VisitBlock (node);
 			node = results as BlockSyntax;
@@ -279,7 +201,7 @@ namespace LiveCSharp
 				{
 					if (statement is ContinueStatementSyntax || statement is BreakStatementSyntax)
 						statements.Add (EndInsideLoopStatement);
-					else if (statement is ReturnStatementSyntax && ((ReturnStatementSyntax)statement).ExpressionOpt == null)
+					else if (statement is ReturnStatementSyntax && ((ReturnStatementSyntax)statement).Expression == null)
 						statements.Add (ReturnStatement);
 				}
 
@@ -289,106 +211,86 @@ namespace LiveCSharp
 					statements.Add (EndLoopStatement);
 			}
 
-			return node.Update (node.OpenBraceToken, Syntax.List<StatementSyntax> (statements), node.CloseBraceToken);
+			return node.WithStatements (Syntax.List<StatementSyntax> (statements));
 		}
 
 		private readonly SyntaxAnnotation isLoop = new SyntaxAnnotation();
 
-		protected override SyntaxNode VisitWhileStatement (WhileStatementSyntax node)
+		public override SyntaxNode VisitWhileStatement (WhileStatementSyntax node)
 		{
-			ExpressionSyntax conditional = RewritePostfixUnarys (node.Condition);
-
-			node = node.Update (node.WhileKeyword, node.OpenParenToken, conditional, node.CloseParenToken,
-			                    GetLoopBlock (node.Statement));
-
-			return base.VisitWhileStatement ((WhileStatementSyntax)node.WithAdditionalAnnotations (this.isLoop));
-		}
-
-		protected override SyntaxNode VisitForStatement (ForStatementSyntax node)
-		{
-			var inits = RewritePostfixUnarys (node.Initializers);
-			var condition = RewritePostfixUnarys (node.ConditionOpt);
-			var incrs = RewritePostfixUnarys (node.Incrementors);
-
-			node = node.Update (node.ForKeyword, node.OpenParenToken, node.DeclarationOpt,
-			                    inits, node.FirstSemicolonToken, condition,
-			                    node.SecondSemicolonToken, incrs, node.CloseParenToken,
-			                    GetLoopBlock (node.Statement));
-
 			this.loopLevel++;
-			var statement = base.VisitForStatement ((ForStatementSyntax)node.WithAdditionalAnnotations (this.isLoop));
+
+			var statement = base.VisitWhileStatement (node
+				.WithStatement (GetLoopBlock (node.Statement))
+				.WithAdditionalAnnotations (this.isLoop));
+
 			this.loopLevel--;
+
 			return statement;
 		}
 
-		protected override SyntaxNode VisitForEachStatement (ForEachStatementSyntax node)
+		public override SyntaxNode VisitForStatement (ForStatementSyntax node)
 		{
-			var expr = RewritePostfixUnarys (node.Expression);
-
-			node = node.Update (node.ForEachKeyword, node.OpenParenToken, node.Type,
-			                    node.Identifier, node.InKeyword, expr, node.CloseParenToken,
-			                    GetLoopBlock (node.Statement));
-
 			this.loopLevel++;
-			var statement = base.VisitForEachStatement ((ForEachStatementSyntax)node.WithAdditionalAnnotations (this.isLoop));
+
+			var statement = base.VisitForStatement (node
+				.WithStatement (GetLoopBlock (node.Statement))
+				.WithAdditionalAnnotations (this.isLoop));
+
 			this.loopLevel--;
+
 			return statement;
 		}
 
-		protected override SyntaxNode VisitDoStatement (DoStatementSyntax node)
+		public override SyntaxNode VisitForEachStatement (ForEachStatementSyntax node)
 		{
-			ExpressionSyntax condition = RewritePostfixUnarys (node.Condition);
-
-			node = node.Update (node.DoKeyword, GetLoopBlock (node.Statement), node.WhileKeyword,
-			                    node.OpenParenToken, condition, node.CloseParenToken, node.SemicolonToken);
-
 			this.loopLevel++;
-			var statement = base.VisitDoStatement ((DoStatementSyntax) node.WithAdditionalAnnotations (this.isLoop));
+
+			var statement = base.VisitForEachStatement (node
+				.WithStatement (GetLoopBlock (node.Statement))
+				.WithAdditionalAnnotations (this.isLoop));
+
 			this.loopLevel--;
+
 			return statement;
 		}
 
-		protected override SyntaxNode VisitYieldStatement(YieldStatementSyntax node)
+		public override SyntaxNode VisitDoStatement (DoStatementSyntax node)
 		{
-			var expr = RewritePostfixUnarys (node.ExpressionOpt);
-			if (expr != node.ExpressionOpt)
-				node = node.Update (node.YieldKeyword, node.ReturnOrBreakKeyword, expr, node.SemicolonToken);
-			
-			return base.VisitYieldStatement (node);
+			this.loopLevel++;
+
+			var statement = base.VisitDoStatement (node
+				.WithStatement (GetLoopBlock (node.Statement))
+				.WithAdditionalAnnotations (this.isLoop));
+
+			this.loopLevel--;
+
+			return statement;
 		}
 
-		protected override SyntaxNode VisitIfStatement (IfStatementSyntax node)
+		public override SyntaxNode VisitIfStatement (IfStatementSyntax node)
 		{
-			if (!node.DescendentNodes().OfType<BlockSyntax>().Any())
+			if (!node.DescendantNodes().OfType<BlockSyntax>().Any())
+				node = node.WithStatement (Syntax.Block (node.Statement));
+
+			if (node.Else != null)
 			{
-				node = node.Update (node.IfKeyword, node.OpenParenToken, node.Condition, node.CloseParenToken,
-				                    Syntax.Block (statements: node.Statement), node.ElseOpt);
-			}
-
-			if (node.ElseOpt != null)
-			{
-				ElseClauseSyntax elseOpt = node.ElseOpt;
+				ElseClauseSyntax elseOpt = node.Else;
 				IfStatementSyntax ifSyntax = elseOpt.Statement as IfStatementSyntax;
 				if (ifSyntax != null)
 				{
-					if (!ifSyntax.DescendentNodes().OfType<BlockSyntax>().Any())
+					if (!ifSyntax.DescendantNodes().OfType<BlockSyntax>().Any())
 					{
-						ifSyntax = ifSyntax.Update (ifSyntax.IfKeyword, ifSyntax.OpenParenToken, ifSyntax.Condition, ifSyntax.CloseParenToken,
-						                            Syntax.Block (statements: ifSyntax.Statement), ifSyntax.ElseOpt);
-
-						elseOpt = elseOpt.Update (elseOpt.ElseKeyword, ifSyntax);
+						ifSyntax = ifSyntax.WithStatement (Syntax.Block (ifSyntax.Statement));
+						elseOpt = elseOpt.WithStatement (ifSyntax);
 					}
 				}
-				else if (!elseOpt.DescendentNodes().OfType<BlockSyntax>().Any())
-					elseOpt = node.ElseOpt.Update (node.ElseOpt.ElseKeyword, Syntax.Block (statements: node.ElseOpt.Statement));
+				else if (!elseOpt.DescendantNodes().OfType<BlockSyntax>().Any())
+					elseOpt = node.Else.WithStatement (Syntax.Block (node.Else.Statement));
 				
-				if (elseOpt != node.ElseOpt)
-					node = node.Update (node.IfKeyword, node.OpenParenToken, node.Condition, node.CloseParenToken, node.Statement, elseOpt);
+				if (elseOpt != node.Else)
+					node = node.WithElse (elseOpt);
 			}
-
-			var conditional = RewritePostfixUnarys (node.Condition);
-			if (conditional != node.Condition)
-				node = node.Update (node.IfKeyword, node.OpenParenToken, conditional, node.CloseParenToken, node.Statement, node.ElseOpt);
 
 			return base.VisitIfStatement (node);
 		}
@@ -405,7 +307,7 @@ namespace LiveCSharp
 			statements.Insert (0, BeginInsideLoopStatement);
 			statements.Add (EndInsideLoopStatement);
 
-			return Syntax.Block (statements: Syntax.List<StatementSyntax> (statements));
+			return Syntax.Block (Syntax.List<StatementSyntax> (statements));
 		}
 
 		private ExpressionSyntax GetLogExpression (string name, SyntaxNode value)
