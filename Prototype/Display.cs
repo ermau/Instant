@@ -17,7 +17,13 @@
 
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
+using System.Reflection;
+using System.Reflection.Emit;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace LiveCSharp
 {
@@ -34,9 +40,65 @@ namespace LiveCSharp
 
 		private static readonly ConcurrentDictionary<Type, Func<object, string>> Displayers = new ConcurrentDictionary<Type, Func<object, string>>();
 
+		private static readonly Regex DisplayExpressionsRegex = new Regex (@"\{(.+?)\}", RegexOptions.Compiled);
 		private static Func<object, string> CreateDisplay (Type type)
 		{
-			return GetStringForObject;
+			DebuggerDisplayAttribute[] attrs = type.GetCustomAttributes (typeof (DebuggerDisplayAttribute), inherit: true).Cast<DebuggerDisplayAttribute>().ToArray();
+			if (attrs.Length == 0)
+				return GetStringForObject;
+
+			DebuggerDisplayAttribute topAttr = attrs[0];
+
+			MatchCollection matches = DisplayExpressionsRegex.Matches (topAttr.Value);
+			if (matches.Count == 0)
+				return GetStringForObject;
+
+			List<Func<object, object>> getters = new List<Func<object, object>>();
+			foreach (Match m in matches)
+			{
+				string expr = m.Value.Substring (1, m.Value.Length - 2).Replace ("(", String.Empty).Replace (")", String.Empty);
+
+				MemberInfo[] members = type.GetMember (expr,
+					MemberTypes.Field | MemberTypes.Method | MemberTypes.Property,
+					BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+
+				if (members.Length == 1)
+				{
+					MethodInfo method = null;
+
+					PropertyInfo property = members [0] as PropertyInfo;
+					if (property != null)
+						method = property.GetGetMethod();
+
+					if (method == null)
+						method = members [0] as MethodInfo;
+
+					if (method != null && method.ReturnType != typeof (void))
+					{
+						getters.Add (o => method.Invoke (o, null));
+						continue;
+					}
+
+					FieldInfo field = members [0] as FieldInfo;
+					if (field != null)
+					{
+						getters.Add (field.GetValue);
+						continue;
+					}
+				}
+
+				getters.Add (o => m.Value);
+			}
+
+			return o =>
+			{
+				StringBuilder builder = new StringBuilder (topAttr.Value);
+				
+				for (int i = 0; i < matches.Count; ++i)
+					builder.Replace (matches [i].Value, GetStringForObject (getters [i] (o)));
+
+				return builder.ToString();
+			};
 		}
 
 		private static string GetStringForObject (object value)
