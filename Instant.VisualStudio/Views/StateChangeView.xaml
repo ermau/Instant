@@ -1,0 +1,23 @@
+﻿<Views:InstantView x:Class="Instant.VisualStudio.Views.StateChangeView"
+	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+	xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:Views="clr-namespace:Instant.VisualStudio.Views"
+    mc:Ignorable="d" x:Name="state"
+	BorderBrush="Blue" BorderThickness="1" Padding="2">
+	
+	<Grid VerticalAlignment="Center">
+		<Grid.ColumnDefinitions>
+			<ColumnDefinition />
+			<ColumnDefinition Width="5" />
+			<ColumnDefinition />
+		</Grid.ColumnDefinitions>
+
+        <TextBlock Grid.Column="0" VerticalAlignment="Center" FontSize="{Binding FontSize,ElementName=state}" Text="{Binding StateChange.Variable}" />
+			
+		<Rectangle Grid.Column="1" Height="Auto" Width="1" Fill="Blue" />
+		<!--<Line Grid.Column="1" Height="{Binding ActualHeight,RelativeSource={RelativeSource FindAncestor,AncestorType=Border}}" />-->
+
+        <TextBlock Grid.Column="2" VerticalAlignment="Center"  FontSize="{Binding FontSize,ElementName=state}" Text="{Binding StateChange.Value}" />
+	</Grid>
+</Views:InstantView>

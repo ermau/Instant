@@ -1,0 +1,29 @@
+﻿<Views:InstantView x:Class="Instant.VisualStudio.Views.LoopView"
+	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+	xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+	xmlns:cor="clr-namespace:System;assembly=mscorlib" xmlns:Views="clr-namespace:Instant.VisualStudio.Views"
+    mc:Ignorable="d" x:Name="loop"
+	BorderBrush="Blue" BorderThickness="1" Padding="2">
+	
+    <Grid VerticalAlignment="Center">
+		<Grid.ColumnDefinitions>
+			<ColumnDefinition />
+			<ColumnDefinition />
+			<ColumnDefinition />
+		</Grid.ColumnDefinitions>
+		
+		<Button Grid.Column="0" Command="{Binding AdjustIteration}" Content="&lt;" FontSize="{Binding FontSize,ElementName=loop}" VerticalContentAlignment="Center">
+			<Button.CommandParameter>
+				<cor:Int32>-1</cor:Int32>
+			</Button.CommandParameter>
+		</Button>
+        <TextBlock Grid.Column="1" Text="{Binding Iteration}" Margin="2,0,2,0" FontSize="{Binding FontSize,ElementName=loop}" VerticalAlignment="Center" />
+        <Button Grid.Column="2" Command="{Binding AdjustIteration}" Content="&gt;" FontSize="{Binding FontSize,ElementName=loop}" VerticalAlignment="Center">
+			<Button.CommandParameter>
+				<cor:Int32>1</cor:Int32>
+			</Button.CommandParameter>
+		</Button>
+    </Grid>
+</Views:InstantView>
