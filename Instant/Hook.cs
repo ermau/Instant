@@ -253,14 +253,7 @@ namespace Instant
 
 		private static void AddOperation (Operation operation)
 		{
-			try
-			{
-				Operations.Peek().Operations.Add (operation);
-			}
-			catch (Exception ex)
-			{
-				
-			}
+			Operations.Peek().Operations.Add (operation);
 		}
 
 		private static bool IsLoggingInifiniteLoop()
