@@ -107,6 +107,10 @@ namespace LiveCSharp
 				return String.Empty;
 			if (value == null)
 				return "null";
+			if (value is string)
+				return "\"" + value + "\"";
+			if (value is char)
+				return "'" + value + "'";
 
 			Type t = value.GetType();
 			if (t.IsArray)

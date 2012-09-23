@@ -1,0 +1,59 @@
+﻿//
+// AdornerBase.cs
+//
+// Copyright 2012 Eric Maupin
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+using System.Windows;
+using System.Windows.Documents;
+using System.Windows.Media;
+
+namespace Instant.Standalone.Adorners
+{
+	public abstract class AdornerBase
+		: Adorner
+	{
+		protected AdornerBase (UIElement adornedElement)
+			: base (adornedElement)
+		{
+		}
+
+		protected override int VisualChildrenCount
+		{
+			get { return 1; }
+		}
+
+		protected override Visual GetVisualChild (int index)
+		{
+			return this.Element;
+		}
+
+		protected override Size MeasureOverride (Size constraint)
+		{
+			this.Element.Measure (constraint);
+			return this.Element.DesiredSize;
+		}
+
+		protected override Size ArrangeOverride (Size finalSize)
+		{
+			this.Element.Arrange (new Rect (this.Element.DesiredSize));
+			return finalSize;
+		}
+
+		protected abstract FrameworkElement Element
+		{
+			get;
+		}
+	}
+}

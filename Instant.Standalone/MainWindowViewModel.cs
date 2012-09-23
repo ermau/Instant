@@ -6,7 +6,7 @@
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-
+//
 //     http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
@@ -21,21 +21,14 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Roslyn.Compilers;
+using Instant.Operations;
 using Roslyn.Compilers.CSharp;
-using Roslyn.Scripting;
-using Roslyn.Scripting.CSharp;
 
-namespace LiveCSharp
+namespace Instant.Standalone
 {
 	public class MainWindowViewModel
 		: INotifyPropertyChanged
 	{
-		public MainWindowViewModel()
-		{
-			this.init = Task.Factory.StartNew (Initialize)
-				.ContinueWith (t => Debug = String.Empty);
-		}
 
 		public event PropertyChangedEventHandler PropertyChanged;
 
@@ -76,6 +69,19 @@ namespace LiveCSharp
 
 				this.output = value;
 				OnPropertyChanged ("Output");
+			}
+		}
+
+		public string Status
+		{
+			get { return this.status; }
+			private set
+			{
+				if (this.status == value)
+					return;
+
+				this.status = value;
+				OnPropertyChanged ("Status");
 			}
 		}
 
@@ -137,53 +143,52 @@ namespace LiveCSharp
 			}
 		}
 
+		public MethodCall RootCall
+		{
+			get { return this.rootCall; }
+			set
+			{
+				if (this.rootCall == value)
+					return;
+
+				this.rootCall = value;
+				OnPropertyChanged ("RootCall");
+			}
+		}
+
+		public double FontSize
+		{
+			get { return this.fontSize; }
+			set
+			{
+				if (this.fontSize == value)
+					return;
+
+				this.fontSize = value;
+				OnPropertyChanged ("FontSize");
+			}
+		}
+
 		private int timeout = 5000, maxLoops = 100;
 		private bool showDebugTree, showCompilerErrors;
 		private string input, output, debug = "Initializing";
 
 		private void OnPropertyChanged (string property)
 		{
-			var changed = PropertyChanged;
+			var changed = this.PropertyChanged;
 			if (changed != null)
 				changed (this, new PropertyChangedEventArgs (property));
-		}
-
-		private CommonScriptEngine scripting;
-		private Task init;
-
-		private void Initialize()
-		{
-			this.scripting = new ScriptEngine (
-				new[]
-				{
-					typeof (string).Assembly, // mscorlib
-					typeof (System.Diagnostics.Stopwatch).Assembly, // System.dll
-					typeof (Enumerable).Assembly, // System.Core.dll
-					typeof (LoggingRewriter).Assembly, // this
-				},
-
-				new[]
-				{
-					"System",
-					"System.Collections.Generic",
-					"System.Diagnostics",
-					"System.Linq"
-				});
-
-			SyntaxTree.ParseCompilationUnit (String.Empty);
 		}
 
 		private CancellationTokenSource cancelSource;
 
 		private string lastOutput = String.Empty;
-		private void ProcessInput()
-		{
-			if (this.init != null)
-			{
-				this.init.Wait();
-				this.init = null;
-			}
+		private MethodCall rootCall;
+		private string status;
+		private double fontSize = 16;
 
+		private async void ProcessInput()
+		{
 			var newSource = new CancellationTokenSource();
 			var source = Interlocked.Exchange (ref this.cancelSource, newSource);
 
@@ -193,9 +198,6 @@ namespace LiveCSharp
 				source.Dispose();
 			}
 
-			StringObjectLogger logger = new StringObjectLogger (this.cancelSource.Token);
-			logger.MaximumLoops = MaximumLoops;
-
 			new Timer (o =>
 			{
 				var cancel = Interlocked.Exchange (ref this.cancelSource, null);
@@ -204,59 +206,27 @@ namespace LiveCSharp
 					cancel.Cancel();
 					cancel.Dispose();
 				}
-			}, null, ExecutionTimeout, Timeout.Infinite);
+			}, null, this.ExecutionTimeout, Timeout.Infinite);
 
-			Task.Factory.StartNew (s =>
-			{
-				string code = (string) s;
-				if (code == null)
-					return;
-
-				SyntaxNode root = Syntax.ParseCompilationUnit (code);
-
-				var logRewriter = new LoggingRewriter();
-				root = logRewriter.Visit (root);
-				
-				if (DebugTree)
-					LogSyntaxTree (root);
-
-				try
-				{
-					Session session = Session.Create (logger);
+			int id = Hook.CreateSubmission (this.cancelSource.Token);
+			SyntaxNode instrumented = await Instantly.Instrument (input, id);
 			
-					this.scripting.Execute (root.ToString(), session);
-				}
-				catch (CompilationErrorException cex)
-				{
-					if (ShowCompilerErrors)
-						Output = this.lastOutput + Environment.NewLine + cex.ToString();
+			if (DebugTree)
+				LogSyntaxTree (instrumented);
 
-					return;
-				}
-				catch (OutOfMemoryException)
-				{
-					return;
-				}
-				catch (Exception ex)
-				{
-					this.lastOutput = logger.Output;
-					Output = logger.Output + Environment.NewLine + ex.ToString();
-					return;
-				}
-
-				string o = logger.Output;
-				if (!String.IsNullOrWhiteSpace (o))
-				{
-					Output = o;
-					this.lastOutput = o;
-				}
-
-			}, Input, this.cancelSource.Token)
-			.ContinueWith(t =>
+			try
 			{
-				if (t.IsFaulted)
-					t.Exception.ToString();
-			});
+				var methods = await Instantly.Evaluate (instrumented, String.Empty);
+				if (methods == null || methods.Count == 0)
+					return;
+
+				RootCall = methods.Values.First();
+			}
+			catch (Exception ex)
+			{
+				Status = ex.Message;
+				Output = ex.ToString();
+			}
 		}
 
 		private void LogSyntaxTree (SyntaxNode node)
@@ -264,7 +234,7 @@ namespace LiveCSharp
 			var builder = new StringBuilder();
 			LogSyntaxTree (node, builder, skipSelf: true);
 
-			Debug = builder.ToString();
+			this.Debug = builder.ToString();
 		}
 
 		private void LogSyntaxTree (SyntaxNode node, StringBuilder builder, int ident = 0, bool skipSelf = false)
