@@ -30,6 +30,7 @@ namespace Instant
 		public static int CreateSubmission (CancellationToken cancelToken)
 		{
 			int id = Interlocked.Increment (ref currentSubmission);
+			CancelToken = cancelToken;
 			
 			values.Clear();
 			operations.Clear();
@@ -66,7 +67,7 @@ namespace Instant
 			set;
 		}
 
-		public static readonly CancellationToken CancelToken;
+		public static CancellationToken CancelToken;
 
 		public static void BeginLoop (int submissionId, int id)
 		{
