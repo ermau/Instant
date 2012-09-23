@@ -17,7 +17,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -26,12 +25,18 @@ using Roslyn.Compilers;
 using Roslyn.Compilers.CSharp;
 using Roslyn.Scripting;
 using Roslyn.Scripting.CSharp;
-using Roslyn.Services;
 
 namespace Instant
 {
 	public static class Instantly
 	{
+		/// <summary>
+		/// Instruments the supplied code to call the <see cref="Hook"/> methods.
+		/// </summary>
+		/// <param name="code">The code to instrument.</param>
+		/// <param name="submissionId">The submission ID retrieved from <see cref="Hook.CreateSubmission"/>.</param>
+		/// <returns>A task for a <see cref="SyntaxNode"/> representing the instrumented code.</returns>
+		/// <seealso cref="Hook.CreateSubmission"/>
 		public static Task<SyntaxNode> Instrument (SyntaxNode code, int submissionId)
 		{
 			if (code == null)
@@ -51,6 +56,7 @@ namespace Instant
 		/// </summary>
 		/// <param name="code">The code to instrument.</param>
 		/// <param name="submissionId">The submission ID retrieved from <see cref="Hook.CreateSubmission"/>.</param>
+		/// <returns>A task for a <see cref="SyntaxNode"/> representing the instrumented code.</returns>
 		/// <seealso cref="Hook.CreateSubmission"/>
 		public static Task<SyntaxNode> Instrument (string code, int submissionId)
 		{
@@ -65,28 +71,38 @@ namespace Instant
 			}, code);
 		}
 
-		public static Task<IDictionary<int, MethodCall>> Evaluate (string code, string evalSource, CancellationToken cancelToken)
+		/// <summary>
+		/// Evaluates pre-instrumented code.
+		/// </summary>
+		/// <param name="instrumentedCode"></param>
+		/// <param name="evalSource"></param>
+		/// <returns>A task for a dictionary of managed thread IDs to <see cref="MethodCall"/>s.</returns>
+		/// <seealso cref="Instrument(string,int)"/>
+		public static Task<IDictionary<int, MethodCall>> Evaluate (SyntaxNode instrumentedCode, string evalSource)
 		{
+			if (instrumentedCode == null)
+				throw new ArgumentNullException ("instrumentedCode");
+			if (evalSource == null)
+				throw new ArgumentNullException ("evalSource");
+
 			return Task<IDictionary<int, MethodCall>>.Factory.StartNew (() =>
 			{
-			    ScriptEngine engine = new ScriptEngine();
-                engine.AddReference (typeof (string).Assembly);// mscorlib
-                engine.AddReference (typeof (System.Diagnostics.Stopwatch).Assembly);// System.dll
+				// Eventually when we support full projects, we can pull these
+				// directly from the project. Until then, general basics.
+				ScriptEngine engine = new ScriptEngine();
+				engine.AddReference (typeof (string).Assembly);// mscorlib
+				engine.AddReference (typeof (System.Diagnostics.Stopwatch).Assembly);// System.dll
 				engine.AddReference (typeof (Enumerable).Assembly); // System.Core.dll
-                engine.AddReference (typeof (Hook).Assembly); // this
+				engine.AddReference (typeof (Hook).Assembly); // this
 
-			    engine.ImportNamespace ("System");
-			    engine.ImportNamespace ("System.Collections.Generic");
-			    engine.ImportNamespace ("System.Diagnostics");
+				engine.ImportNamespace ("System");
+				engine.ImportNamespace ("System.Collections.Generic");
+				engine.ImportNamespace ("System.Diagnostics");
 
-				int id = Hook.CreateSubmission (cancelToken);
-
-				SyntaxNode instrumented = Instrument (code, id).Result;
-				
 				try
 				{
-				    Session session = engine.CreateSession();
-					session.Execute (instrumented.ToString());
+					Session session = engine.CreateSession();
+					session.Execute (instrumentedCode.ToString());
 					session.Execute (evalSource);
 					
 					return Hook.RootCalls;
@@ -101,13 +117,23 @@ namespace Instant
 				}
 				catch (OperationCanceledException)
 				{
+					// We can still potentially display results up to the cancellation
 					return Hook.RootCalls;
 				}
-				catch (Exception)
-				{
-					throw;
-				}
 			});
+		}
+
+		/// <summary>
+		/// Instruments and evaluates the supplied source.
+		/// </summary>
+		/// <param name="code"></param>
+		/// <param name="evalSource"></param>
+		/// <param name="cancelToken"></param>
+		/// <returns>A task for a dictionary of managed thread IDs to <see cref="MethodCall"/>s.</returns>
+		public static Task<IDictionary<int, MethodCall>> InstrumentAndEvaluate (string code, string evalSource, CancellationToken cancelToken)
+		{
+			int submissionId = Hook.CreateSubmission (cancelToken);
+			return Instrument (code, submissionId).ContinueWith (t => Evaluate (t.Result, evalSource)).Unwrap();
 		}
 	}
 }

@@ -30,7 +30,7 @@ namespace Instant
 
 			BinaryExpressionSyntax binaryExpression = expression as BinaryExpressionSyntax;
 			if (binaryExpression != null)
-				return FindIdentifierName(binaryExpression.Right);
+				return FindIdentifierName (binaryExpression.Right);
 
 			PostfixUnaryExpressionSyntax postfixUnaryExpression = expression as PostfixUnaryExpressionSyntax;
 			if (postfixUnaryExpression != null)

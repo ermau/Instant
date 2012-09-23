@@ -230,7 +230,7 @@ namespace Instant.VisualStudio
 			{
 				string code = this.context.Span.GetText (this.view.TextSnapshot);
 
-				IDictionary<int, MethodCall> methods = await Instantly.Evaluate (code, this.context.TestCode, cancel.Token)
+				IDictionary<int, MethodCall> methods = await Instantly.InstrumentAndEvaluate (code, this.context.TestCode, cancel.Token)
 														?? this.context.LastData;
 				if (methods == null || methods.Count == 0)
 					return;
