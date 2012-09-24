@@ -85,6 +85,11 @@ namespace Instant.VisualStudio.ViewModels
 			}
 		}
 
+		public int TotalIterations
+		{
+			get { return this.iterations.Length - 1; }
+		}
+
 		private readonly DelegatedCommand adjustIteration;
 		private LoopIteration[] iterations;
 		private int iteration;
@@ -94,6 +99,8 @@ namespace Instant.VisualStudio.ViewModels
 			base.OnOperationChanged();
 
 			this.iterations = Loop.Operations.OfType<LoopIteration>().ToArray();
+			Iteration = this.iterations.Length - 1;
+			OnPropertyChanged ("TotalIterations");
 			this.adjustIteration.ChangeCanExecute();
 		}
 

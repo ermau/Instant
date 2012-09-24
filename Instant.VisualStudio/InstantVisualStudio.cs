@@ -23,6 +23,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using Cadenza.Collections;
@@ -89,10 +90,49 @@ namespace Instant.VisualStudio
 		    LayoutButtons (e.NewSnapshot);
 	    }
 
-		private float GetFontSize()
+		// We can likely set up a cache for all these, just need to ensure they're
+		// cleared when the user changes them.
+		private EnvDTE.Properties FontsAndColors
 		{
-			EnvDTE.Properties fonts = this.dte.Properties["FontsAndColors", "TextEditor"];
-			return (float)fonts.Item ("FontSize").Value;
+			get { return this.dte.Properties["FontsAndColors", "TextEditor"]; }
+		}
+
+		private FontsAndColorsItems FontsAndColorsItems
+		{
+			get { return ((FontsAndColorsItems)FontsAndColors.Item ("FontsAndColorsItems").Object); }
+		}
+
+		private float FontSize
+		{
+			get { return (float)FontsAndColors.Item ("FontSize").Value; }
+		}
+
+		private Brush BorderBrush
+		{
+			get { return GetBrush (FontsAndColorsItems.Item ("Keyword").Foreground); }
+		}
+
+		private Brush Foreground
+		{
+			get { return GetBrush (FontsAndColorsItems.Item ("Plain Text").Foreground); }
+		}
+
+		private FontFamily FontFamily
+		{
+			get
+			{
+				string family = (string)FontsAndColors.Item("FontFamily").Value;
+				return new FontFamily (family);
+			}
+		}
+
+		private SolidColorBrush GetBrush (uint color)
+		{
+			int oleColor = Convert.ToInt32 (color);
+			return new SolidColorBrush (Color.FromRgb (
+					(byte)((oleColor) & 0xFF),
+					(byte)((oleColor >> 8) & 0xFF),
+					(byte)((oleColor >> 16) & 0xFF)));
 		}
 
 	    private void LayoutButtons (ITextSnapshot newSnapshot)
@@ -142,7 +182,8 @@ namespace Instant.VisualStudio
 						{
 							tracking = snapshot.CreateTrackingSpan (methodSpan, SpanTrackingMode.EdgeExclusive);
 							button = new Button();
-							button.FontSize = GetFontSize() * 0.90;
+							button.FontSize = FontSize * 0.90;
+							button.Cursor = Cursors.Arrow;
 						}
 						else
 							preexisting = true;
@@ -308,10 +349,13 @@ namespace Instant.VisualStudio
 				if (adorner == null)
 				{
 					adorner = vs.CreateView();
-					adorner.FontSize = GetFontSize() * 0.90;
+					adorner.FontSize = FontSize - 1;
+					adorner.FontFamily = FontFamily;
+					adorner.BorderBrush = BorderBrush;
+					adorner.Foreground = Foreground;
 					preexisted = false;
 				}
-
+				
 				adorner.Tag = operation.Id;
 
 				OperationViewModel model = adorner.DataContext as OperationViewModel;
@@ -351,8 +395,9 @@ namespace Instant.VisualStudio
 				}
 
 				Canvas.SetLeft (adorner, g.Bounds.Right + 10);
-				Canvas.SetTop (adorner, g.Bounds.Top);
-				adorner.MaxHeight = g.Bounds.Height;// - 4;
+				Canvas.SetTop (adorner, g.Bounds.Top + 1);
+				adorner.Height = g.Bounds.Height - 2;
+				adorner.MaxHeight = g.Bounds.Height - 2;
 
 				if (span == null)
 					span = snapshot.CreateTrackingSpan (line.Extent, SpanTrackingMode.EdgeExclusive);

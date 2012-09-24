@@ -3,8 +3,17 @@
 	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
 	xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
 	xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:Views="clr-namespace:Instant.VisualStudio.Views"
-    mc:Ignorable="d" x:Name="return"
-	BorderBrush="Blue" BorderThickness="1" Padding="2" VerticalAlignment="Center">
+	mc:Ignorable="d" x:Name="return"
+	BorderThickness="1" Padding="2,0,2,0" VerticalAlignment="Center">
 
-    <TextBlock Text="{Binding Value, StringFormat=return {0}}" FontSize="{Binding FontSize,ElementName=return}" />
+	<Views:InstantView.Resources>
+		<Style TargetType="TextBlock">
+			<Setter Property="FontFamily" Value="{Binding FontFamily,ElementName=return}" />
+			<Setter Property="FontSize" Value="{Binding FontSize,ElementName=return}" />
+			<Setter Property="Foreground" Value="{Binding Foreground,ElementName=return}" />
+			<Setter Property="VerticalAlignment" Value="Center" />
+		</Style>
+	</Views:InstantView.Resources>
+
+	<TextBlock Text="{Binding Value, StringFormat=return {0}}" />
 </Views:InstantView>

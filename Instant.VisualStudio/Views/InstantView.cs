@@ -17,6 +17,7 @@
 
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 
 namespace Instant.VisualStudio.Views
 {
@@ -30,6 +31,24 @@ namespace Instant.VisualStudio.Views
 		{
 			get { return (double)GetValue (FontSizeProperty); }
 			set { SetValue (FontSizeProperty, value); }
+		}
+
+		public static readonly DependencyProperty FontFamilyProperty =
+			DependencyProperty.Register ("FontFamily", typeof (FontFamily), typeof (InstantView), new PropertyMetadata (default(FontFamily)));
+
+		public FontFamily FontFamily
+		{
+			get { return (FontFamily)GetValue (FontFamilyProperty); }
+			set { SetValue (FontFamilyProperty, value); }
+		}
+
+		public static readonly DependencyProperty ForegroundProperty =
+			DependencyProperty.Register ("Foreground", typeof (Brush), typeof (InstantView), new PropertyMetadata (default(Brush)));
+
+		public Brush Foreground
+		{
+			get { return (Brush)GetValue (ForegroundProperty); }
+			set { SetValue (ForegroundProperty, value); }
 		}
 	}
 }
