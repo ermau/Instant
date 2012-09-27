@@ -72,7 +72,10 @@ namespace Instant
 		public static void BeginLoop (int submissionId, int id)
 		{
 			if (submissionId < currentSubmission)
+			{
+				CancelToken.ThrowIfCancellationRequested();
 				return;
+			}
 
 			loopLevel++;
 			Operations.Push (new Loop (id));
@@ -81,7 +84,10 @@ namespace Instant
 		public static void BeginInsideLoop (int submissionId, int id)
 		{
 			if (submissionId < currentSubmission)
+			{
+				CancelToken.ThrowIfCancellationRequested();
 				return;
+			}
 
 			Operations.Push (new LoopIteration (id));
 
@@ -97,7 +103,10 @@ namespace Instant
 		public static void EndInsideLoop (int submissionId, int id)
 		{
 			if (submissionId < currentSubmission)
+			{
+				CancelToken.ThrowIfCancellationRequested();
 				return;
+			}
 
 			LoopIteration iter = Operations.Pop() as LoopIteration;
 			if (iter == null)
@@ -110,6 +119,12 @@ namespace Instant
 			foreach (var kvp in Values.Where (kvp => kvp.Value.Count != iteration))
 				kvp.Value.Add (Skipped);
 			
+			if (CancelToken.IsCancellationRequested)
+			{
+				EndLoop (submissionId, id);
+				throw new OperationCanceledException (CancelToken);
+			}
+
 			if (IsLoggingInifiniteLoop())
 			{
 				EndLoop (submissionId, id);
@@ -124,7 +139,10 @@ namespace Instant
 		public static void EndLoop (int submissionId, int id)
 		{
 			if (submissionId < currentSubmission)
+			{
+				CancelToken.ThrowIfCancellationRequested();
 				return;
+			}
 
 			string[] names = Values.Keys.ToArray();
 			if (names.Length > 0)
@@ -160,7 +178,10 @@ namespace Instant
 		public static void LogReturn (int submissionId, int id)
 		{
 			if (submissionId < currentSubmission)
+			{
+				CancelToken.ThrowIfCancellationRequested();
 				return;
+			}
 
 			while (loopLevel > 0)
 				EndLoop (submissionId, id);
@@ -175,7 +196,11 @@ namespace Instant
 		public static T LogReturn<T> (int submissionId, int id, T value)
 		{
 			if (submissionId < currentSubmission)
+			{
+				CancelToken.ThrowIfCancellationRequested();
 				return value;
+			}
+
 			//AddOperation (new ReturnValue (id, Display.Object (value)));
 
 			while (loopLevel > 0)
@@ -229,7 +254,10 @@ namespace Instant
 		public static void LogEnterMethod (int submissionId, int id, string name, params StateChange[] arguments)
 		{
 			if (submissionId < currentSubmission)
+			{
+				CancelToken.ThrowIfCancellationRequested();
 				return;
+			}
 
 			Operations.Push (new MethodCall (id, name, arguments));
 		}
