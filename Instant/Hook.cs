@@ -31,9 +31,12 @@ namespace Instant
 		{
 			int id = Interlocked.Increment (ref currentSubmission);
 			CancelToken = cancelToken;
-			
-			values.Clear();
-			operations.Clear();
+
+			lock (SubmissionLock)
+			{
+				values.Clear();
+				operations.Clear();
+			}
 
 			loopLevel = 0;
 			iteration = 0;
@@ -71,21 +74,12 @@ namespace Instant
 			}
 		}
 
-		public static int MaximumLoops
-		{
-			get;
-			set;
-		}
-
 		public static CancellationToken CancelToken;
 
 		public static void BeginLoop (int submissionId, int id)
 		{
 			if (submissionId < currentSubmission)
-			{
-				CancelToken.ThrowIfCancellationRequested();
-				return;
-			}
+				throw new OperationCanceledException();
 
 			loopLevel++;
 			Operations.Push (new Loop (id));
@@ -94,10 +88,7 @@ namespace Instant
 		public static void BeginInsideLoop (int submissionId, int id)
 		{
 			if (submissionId < currentSubmission)
-			{
-				CancelToken.ThrowIfCancellationRequested();
-				return;
-			}
+				throw new OperationCanceledException();
 
 			Operations.Push (new LoopIteration (id));
 
@@ -113,10 +104,7 @@ namespace Instant
 		public static void EndInsideLoop (int submissionId, int id)
 		{
 			if (submissionId < currentSubmission)
-			{
-				CancelToken.ThrowIfCancellationRequested();
-				return;
-			}
+				throw new OperationCanceledException();
 
 			LoopIteration iter = Operations.Pop() as LoopIteration;
 			if (iter == null)
@@ -149,10 +137,7 @@ namespace Instant
 		public static void EndLoop (int submissionId, int id)
 		{
 			if (submissionId < currentSubmission)
-			{
-				CancelToken.ThrowIfCancellationRequested();
-				return;
-			}
+				throw new OperationCanceledException();
 
 			string[] names = Values.Keys.ToArray();
 			if (names.Length > 0)
@@ -188,10 +173,7 @@ namespace Instant
 		public static void LogReturn (int submissionId, int id)
 		{
 			if (submissionId < currentSubmission)
-			{
-				CancelToken.ThrowIfCancellationRequested();
-				return;
-			}
+				throw new OperationCanceledException();
 
 			while (loopLevel > 0)
 				EndLoop (submissionId, id);
@@ -206,10 +188,7 @@ namespace Instant
 		public static T LogReturn<T> (int submissionId, int id, T value)
 		{
 			if (submissionId < currentSubmission)
-			{
-				CancelToken.ThrowIfCancellationRequested();
-				return value;
-			}
+				throw new OperationCanceledException();
 
 			//AddOperation (new ReturnValue (id, Display.Object (value)));
 
@@ -233,10 +212,7 @@ namespace Instant
 		public static T LogObject<T> (int submissionId, int id, string name, T value)
 		{
 			if (submissionId < currentSubmission)
-			{
-				CancelToken.ThrowIfCancellationRequested();
-				return value;
-			}
+				throw new OperationCanceledException();
 
 			AddOperation (new StateChange (id, name, Display.Object (value)));
 
@@ -253,10 +229,7 @@ namespace Instant
 		public static void LogEnterMethod (int submissionId, int id, string name, params StateChange[] arguments)
 		{
 			if (submissionId < currentSubmission)
-			{
-				CancelToken.ThrowIfCancellationRequested();
-				return;
-			}
+				throw new OperationCanceledException();
 
 			Operations.Push (new MethodCall (id, name, arguments));
 		}
@@ -285,7 +258,11 @@ namespace Instant
 		{
 			lock (SubmissionLock)
 			{
-				Operations.Peek().Operations.Add (operation);
+				var ops = Operations;
+				if (ops.Count == 0)
+					return;
+
+				ops.Peek().Operations.Add (operation);
 			}
 		}
 
