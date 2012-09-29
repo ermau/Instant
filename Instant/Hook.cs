@@ -54,7 +54,17 @@ namespace Instant
 					if (kvp.Value.Count == 0)
 						continue;
 
-					methods.Add (kvp.Key, (MethodCall)kvp.Value.Peek());
+					OperationContainer container = kvp.Value.Pop();
+					while (!(container is MethodCall) && kvp.Value.Count > 0)
+					{
+						var c = container;
+						container = kvp.Value.Pop();
+						container.Operations.Add (c);
+					}
+
+					var method = container as MethodCall;
+					if (method != null)
+						methods.Add (kvp.Key, method);
 				}
 
 				return methods;
