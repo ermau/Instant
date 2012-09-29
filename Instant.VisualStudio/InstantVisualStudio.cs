@@ -265,7 +265,10 @@ namespace Instant.VisualStudio
 			var cancel = new CancellationTokenSource();
 		    CancellationTokenSource oldCancel = Interlocked.Exchange (ref this.executeCancelSource, cancel);
 		    if (oldCancel != null)
-			    oldCancel.Cancel();
+		    {
+				oldCancel.Cancel();
+				oldCancel.Dispose();
+		    }
 
 			try
 			{
