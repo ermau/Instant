@@ -233,23 +233,12 @@ namespace Instant
 		public static T LogObject<T> (int submissionId, int id, string name, T value)
 		{
 			if (submissionId < currentSubmission)
-				return value;
-
-			if (loopLevel > 0)
 			{
-				List<object> vs;
-				if (!Values.TryGetValue (name, out vs))
-				{
-					Values [name] = vs = new List<object>();
-					vs.AddRange (Enumerable.Repeat (Skipped, iteration));
-				}
-
-				vs.Add (value);
+				CancelToken.ThrowIfCancellationRequested();
+				return value;
 			}
-			//else
-			//{
-				AddOperation (new StateChange (id, name, Display.Object (value)));
-			//}
+
+			AddOperation (new StateChange (id, name, Display.Object (value)));
 
 			return value;
 		}
@@ -302,21 +291,76 @@ namespace Instant
 
 		private static bool IsLoggingInifiniteLoop()
 		{
-			bool multipleUnchangedValues = (Values.Count == 0);
-			
-			foreach (List<object> history in Values.Values)
-			{
-				if (history.Count > 1)
-				{
-					multipleUnchangedValues = true;
+			OperationContainer container = Operations.Peek();
 
-					object hvalue = history [history.Count - 1];
-					if (hvalue != Skipped && !hvalue.Equals (history[history.Count - 2]))
+			var loop = container as Loop;
+			if (loop != null)
+				return GetIsLoggingInfiniteLoop (loop, null);
+
+			foreach (Loop l in container.Operations.OfType<Loop>())
+			{
+				if (!GetIsLoggingInfiniteLoop (l, null))
+					return false;
+			}
+
+			return true;
+		}
+
+		private static bool GetIsLoggingInfiniteLoop (Loop loop, Dictionary<string, StateChange> changes)
+		{
+			if (changes == null)
+				changes = new Dictionary<string, StateChange>();
+
+			if (loop.Operations.OfType<LoopIteration>().Count() <= 1)
+				return false;
+
+			foreach (Operation operation in loop.Operations)
+			{
+				var change = operation as StateChange;
+				if (change != null)
+				{
+					if (GetDidChange (changes, change))
 						return false;
+
+					continue;
+				}
+
+				var iter = operation as LoopIteration;
+				if (iter != null)
+				{
+					foreach (Operation iterOp in iter.Operations)
+					{
+						if (iterOp is Loop)
+						{
+							if (!GetIsLoggingInfiniteLoop ((Loop)iterOp, null))
+								return false;
+						}
+
+						if (iterOp is MethodCall || iterOp is ReturnValue)
+							return false;
+
+						if (iterOp is StateChange)
+						{
+							if (GetDidChange (changes, (StateChange)iterOp))
+								return false;
+						}
+					}
 				}
 			}
 
-			return multipleUnchangedValues;
+			return true;
+		}
+
+		private static bool GetDidChange (Dictionary<string, StateChange> changes, StateChange change)
+		{
+			StateChange previous;
+			if (!changes.TryGetValue (change.Variable, out previous))
+			{
+				changes[change.Variable] = change;
+				return false;
+			}
+
+			return !Equals (previous.Value, change.Value);
 		}
 	}
 }
