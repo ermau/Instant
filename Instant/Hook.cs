@@ -275,9 +275,12 @@ namespace Instant
 		[ThreadStatic] private static int loopLevel;
 		[ThreadStatic] private static int iteration;
 
+		private static readonly object SubmissionLock = new object();
+
 		private static readonly ConcurrentDictionary<int,Dictionary<string, List<object>>> values = new ConcurrentDictionary<int, Dictionary<string, List<object>>>();
 		private static readonly ConcurrentDictionary<int,Stack<OperationContainer>> operations = new ConcurrentDictionary<int, Stack<OperationContainer>>();
 		private static int currentSubmission;
+		
 
 		private static Stack<OperationContainer> Operations
 		{
@@ -291,7 +294,10 @@ namespace Instant
 
 		private static void AddOperation (Operation operation)
 		{
-			Operations.Peek().Operations.Add (operation);
+			lock (SubmissionLock)
+			{
+				Operations.Peek().Operations.Add (operation);
+			}
 		}
 
 		private static bool IsLoggingInifiniteLoop()
