@@ -34,6 +34,7 @@ using Instant.VisualStudio.Views;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Text.Editor;
+using Roslyn.Compilers;
 using Roslyn.Compilers.CSharp;
 using Task = System.Threading.Tasks.Task;
 
@@ -150,7 +151,7 @@ namespace Instant.VisualStudio
 
 			    CompilationUnitSyntax root = SyntaxTree.ParseText (code).GetRoot();
 			    
-				if (root.GetDiagnostics().Any())
+				if (root.GetDiagnostics().Any (d => d.Info.Severity == DiagnosticSeverity.Error))
 					return;
 
 			    foreach (var m in root.DescendantNodes().OfType<MethodDeclarationSyntax>())
