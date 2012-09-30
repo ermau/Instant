@@ -83,7 +83,7 @@ namespace Instant.Standalone
 			this.updating = true;
 
 			SyntaxNode root = Syntax.ParseCompilationUnit (Text);
-			root = new FixingRewriter().Visit (root);
+			//root = new FixingRewriter().Visit (root);
 			var ided = new IdentifyingVisitor().Visit (root);
 			this.IdCode = ided.ToString();
 

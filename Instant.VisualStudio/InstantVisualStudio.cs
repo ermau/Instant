@@ -300,8 +300,8 @@ namespace Instant.VisualStudio
 	    {
 		    ITextSnapshot snapshot = this.view.TextSnapshot;
 
-		    SyntaxNode root = Syntax.ParseCompilationUnit (code);
-		    root = new FixingRewriter().Visit (root);
+		    SyntaxNode root = SyntaxTree.ParseText (code).GetRoot();
+		    //root = new FixingRewriter().Visit (root);
 		    var ided = new IdentifyingVisitor().Visit (root);
 
 		    Dictionary<int, ITextSnapshotLine> lineMap = new Dictionary<int, ITextSnapshotLine>();
