@@ -221,6 +221,7 @@ namespace Instant.Standalone
 					return;
 
 				RootCall = methods.Values.First();
+				Status = null;
 			}
 			catch (Exception ex)
 			{
