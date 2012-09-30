@@ -376,13 +376,13 @@ namespace Instant.VisualStudio
 						
 					LoopIteration[] iterations = loop.Operations.OfType<LoopIteration>().ToArray();
 					if (!preexisted || loopModel.Iteration > iterations.Length - 1)
-						loopModel.Iteration = iterations.Length - 1;
+						loopModel.Iteration = iterations.Length;
 
 					if (!preexisted)
 					{
 						loopModel.IterationChanged += (sender, args) =>
 						{
-							LoopIteration iteration = loopModel.Iterations[args.OldValue];
+							LoopIteration iteration = loopModel.Iterations[args.OldValue - 1];
 							foreach (Operation op in iteration.Operations)
 							{
 								FrameworkElement opAdorner = FindAdorner (op.Id);
@@ -396,7 +396,7 @@ namespace Instant.VisualStudio
 					}
 
 					if (iterations.Length > 0)
-						AdornOperationContainer (iterations[loopModel.Iteration], snapshot, lineMap);
+						AdornOperationContainer (iterations[loopModel.Iteration - 1], snapshot, lineMap);
 				}
 
 				Canvas.SetLeft (adorner, g.Bounds.Right + 10);

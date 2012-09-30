@@ -87,7 +87,7 @@ namespace Instant.VisualStudio.ViewModels
 
 		public int TotalIterations
 		{
-			get { return this.iterations.Length - 1; }
+			get { return this.iterations.Length; }
 		}
 
 		private readonly DelegatedCommand adjustIteration;
@@ -99,7 +99,7 @@ namespace Instant.VisualStudio.ViewModels
 			base.OnOperationChanged();
 
 			this.iterations = Loop.Operations.OfType<LoopIteration>().ToArray();
-			Iteration = this.iterations.Length - 1;
+			Iteration = this.iterations.Length;
 			OnPropertyChanged ("TotalIterations");
 			this.adjustIteration.ChangeCanExecute();
 		}
@@ -109,7 +109,7 @@ namespace Instant.VisualStudio.ViewModels
 			int amount = (int)o;
 			int realized = Iteration + amount;
 
-			return (realized >= 0 && realized < this.iterations.Length);
+			return (realized > 0 && realized <= this.iterations.Length);
 		}
 
 		private void Adjust (object o)
