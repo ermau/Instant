@@ -5,6 +5,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Instant", "Instant\Instant.
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{20D35CF4-305D-4042-9ABD-517C650DCE09}"
 	ProjectSection(SolutionItems) = preProject
+		CONTRIBUTING.md = CONTRIBUTING.md
+		Instant.sln.DotSettings = Instant.sln.DotSettings
 		LICENSE.txt = LICENSE.txt
 		README.md = README.md
 	EndProjectSection
