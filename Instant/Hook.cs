@@ -193,14 +193,12 @@ namespace Instant
 			if (submissionId < currentSubmission)
 				throw new OperationCanceledException();
 
-			//AddOperation (new ReturnValue (id, Display.Object (value)));
+			AddOperation (new ReturnValue (id, Display.Object (value)));
 
 			while (loopLevel > 0)
 			{
 				EndInsideLoop (submissionId, id);
 				EndLoop (submissionId, id);
-
-			//AddOperation (new ReturnValue (id, Display.Object (value)));
 			}
 
 			if (Operations.Count == 1)
