@@ -96,6 +96,7 @@ namespace Instant
 				engine.AddReference (typeof (Hook).Assembly); // this
 
 				engine.ImportNamespace ("System");
+				engine.ImportNamespace ("System.Linq");
 				engine.ImportNamespace ("System.Collections.Generic");
 				engine.ImportNamespace ("System.Diagnostics");
 
