@@ -315,7 +315,7 @@ namespace Instant
 			if (block != null)
 				statements = new List<StatementSyntax> (block.Statements);
 			else
-				statements = new List<StatementSyntax>();
+				statements = new List<StatementSyntax> { statement };
 
 			statements.Insert (0, Syntax.ParseStatement ("Instant.Hook.BeginInsideLoop (" + GetIdString() + ");"));
 			statements.Add (Syntax.ParseStatement ("Instant.Hook.EndInsideLoop (" + GetIdString() + ");"));
