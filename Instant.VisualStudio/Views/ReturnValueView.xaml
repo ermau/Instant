@@ -15,5 +15,5 @@
 		</Style>
 	</Views:InstantView.Resources>
 
-	<TextBlock Text="{Binding Value, StringFormat=return {0}}" />
+	<TextBlock Text="{Binding ReturnValue.Value, StringFormat=return {0}}" />
 </Views:InstantView>

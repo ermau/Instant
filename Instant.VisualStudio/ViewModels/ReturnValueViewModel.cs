@@ -15,10 +15,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using Instant.Operations;
+
 namespace Instant.VisualStudio.ViewModels
 {
 	public class ReturnValueViewModel
 		: OperationViewModel
 	{
+		public ReturnValue ReturnValue
+		{
+			get { return (ReturnValue)Operation; }
+		}
+
+		protected override void OnOperationChanged()
+		{
+			base.OnOperationChanged();
+			OnPropertyChanged ("ReturnValue");
+		}
 	}
 }
