@@ -394,7 +394,8 @@ namespace Instant.VisualStudio
 						};
 					}
 
-					AdornOperationContainer (iterations[loopModel.Iteration], snapshot, lineMap);
+					if (iterations.Length > 0)
+						AdornOperationContainer (iterations[loopModel.Iteration], snapshot, lineMap);
 				}
 
 				Canvas.SetLeft (adorner, g.Bounds.Right + 10);

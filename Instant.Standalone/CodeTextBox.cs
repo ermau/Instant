@@ -162,8 +162,9 @@ namespace Instant.Standalone
 					};
 
 					adorner = loopadorner;
-
-					AdornOperationContainer (loop.Operations.OfType<LoopIteration>().ElementAt (iteration), lineMap, layer);
+					
+					if (loopadorner.Iterations.Length > 0)
+						AdornOperationContainer (loopadorner.Iterations[iteration], lineMap, layer);
 				}
 				else if (operation is StateChange)
 				{
