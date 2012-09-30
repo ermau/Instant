@@ -176,7 +176,10 @@ namespace Instant
 				throw new OperationCanceledException();
 
 			while (loopLevel > 0)
+			{
+				EndInsideLoop (submissionId, id);
 				EndLoop (submissionId, id);
+			}
 
 			MethodCall call = Operations.Pop() as MethodCall;
 			if (call == null)
@@ -193,9 +196,12 @@ namespace Instant
 			//AddOperation (new ReturnValue (id, Display.Object (value)));
 
 			while (loopLevel > 0)
+			{
+				EndInsideLoop (submissionId, id);
 				EndLoop (submissionId, id);
 
 			//AddOperation (new ReturnValue (id, Display.Object (value)));
+			}
 
 			if (Operations.Count == 1)
 				return value; // top level method
