@@ -138,7 +138,8 @@ namespace Instant
 
 				list.Add (s);
 
-				this.id++;
+				if (loop)
+					this.id++;
 				//if (loop)
 				//	s = s.WithTrailingTrivia (s.GetTrailingTrivia().Prepend (GetIdComment()));
 			}
