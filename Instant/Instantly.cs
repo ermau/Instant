@@ -108,11 +108,9 @@ namespace Instant
 				}
 				catch (CompilationErrorException)
 				{
-					throw new OperationCanceledException();
 				}
 				catch (OutOfMemoryException)
 				{
-					throw new OperationCanceledException();
 				}
 				catch (OperationCanceledException)
 				{ // We can still potentially display results up to the cancellation

@@ -290,7 +290,7 @@ namespace Instant.VisualStudio
 				this.context.LastData = methods;
 				AdornCode (code, methods);
 			}
-			catch (Exception)
+			catch (Exception) // We don't have a way to show errors right now
 			{
 			}
 		}
