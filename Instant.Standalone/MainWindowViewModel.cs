@@ -208,15 +208,18 @@ namespace Instant.Standalone
 				}
 			}, null, this.ExecutionTimeout, Timeout.Infinite);
 
-			int id = Hook.CreateSubmission (this.cancelSource.Token);
-			SyntaxNode instrumented = await Instantly.Instrument (input, id);
+			var sink = new MemoryInstrumentationSink();
+			Submission s = Hook.CreateSubmission (sink, this.cancelSource.Token);
+			SyntaxNode instrumented = await Instantly.Instrument (input, s.SubmissionId);
 			
 			if (DebugTree)
 				LogSyntaxTree (instrumented);
 
 			try
 			{
-				var methods = await Instantly.Evaluate (instrumented, String.Empty);
+				await Instantly.Evaluate (instrumented, String.Empty);
+				
+				var methods = sink.GetRootCalls();
 				if (methods == null || methods.Count == 0)
 					return;
 

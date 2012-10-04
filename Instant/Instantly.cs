@@ -78,14 +78,14 @@ namespace Instant
 		/// <param name="evalSource"></param>
 		/// <returns>A task for a dictionary of managed thread IDs to <see cref="MethodCall"/>s.</returns>
 		/// <seealso cref="Instrument(string,int)"/>
-		public static Task<IDictionary<int, MethodCall>> Evaluate (SyntaxNode instrumentedCode, string evalSource)
+		public static Task Evaluate (SyntaxNode instrumentedCode, string evalSource)
 		{
 			if (instrumentedCode == null)
 				throw new ArgumentNullException ("instrumentedCode");
 			if (evalSource == null)
 				throw new ArgumentNullException ("evalSource");
 
-			return Task<IDictionary<int, MethodCall>>.Factory.StartNew (() =>
+			return Task.Factory.StartNew (() =>
 			{
 				// Eventually when we support full projects, we can pull these
 				// directly from the project. Until then, general basics.
@@ -105,21 +105,17 @@ namespace Instant
 					Session session = engine.CreateSession();
 					session.Execute (instrumentedCode.ToString());
 					session.Execute (evalSource);
-					
-					return Hook.RootCalls;
 				}
 				catch (CompilationErrorException)
 				{
-					return null;
+					throw new OperationCanceledException();
 				}
 				catch (OutOfMemoryException)
 				{
-					return null;
+					throw new OperationCanceledException();
 				}
 				catch (OperationCanceledException)
-				{
-					// We can still potentially display results up to the cancellation
-					return Hook.RootCalls;
+				{ // We can still potentially display results up to the cancellation
 				}
 			});
 		}
@@ -131,10 +127,15 @@ namespace Instant
 		/// <param name="evalSource"></param>
 		/// <param name="cancelToken"></param>
 		/// <returns>A task for a dictionary of managed thread IDs to <see cref="MethodCall"/>s.</returns>
-		public static Task<IDictionary<int, MethodCall>> InstrumentAndEvaluate (string code, string evalSource, CancellationToken cancelToken)
+		public static async Task<IDictionary<int, MethodCall>> InstrumentAndEvaluate (string code, string evalSource, CancellationToken cancelToken)
 		{
-			int submissionId = Hook.CreateSubmission (cancelToken);
-			return Instrument (code, submissionId).ContinueWith (t => Evaluate (t.Result, evalSource)).Unwrap();
+			var sink = new MemoryInstrumentationSink();
+			Submission submission = Hook.CreateSubmission (sink, cancelToken);
+			
+			SyntaxNode instrumented = await Instrument (code, submission.SubmissionId).ConfigureAwait (false);
+			await Evaluate (instrumented, evalSource).ConfigureAwait (false);
+
+			return sink.GetRootCalls();
 		}
 	}
 }
