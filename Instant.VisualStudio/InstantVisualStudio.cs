@@ -407,9 +407,12 @@ namespace Instant.VisualStudio
 							LoopIteration iteration = loopModel.Iterations[args.OldValue - 1];
 							foreach (Operation op in iteration.Operations)
 							{
-								FrameworkElement opAdorner = FindAdorner (op.Id);
-								if (opAdorner != null)
-									this.layer.RemoveAdornment (opAdorner);
+								foreach (int id in iteration.Operations.Select (o => o.Id).Distinct())
+								{
+									FrameworkElement opAdorner = FindAdorner (id);
+									if (opAdorner != null)
+										this.layer.RemoveAdornment (opAdorner);
+								}
 							}
 
 							//this.layer.RemoveAllAdornments();	
