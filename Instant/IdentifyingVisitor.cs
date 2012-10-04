@@ -130,9 +130,7 @@ namespace Instant
 
 				if (this.loopLevel > 0)
 				{
-					if (s is ContinueStatementSyntax || s is BreakStatementSyntax || s is ReturnStatementSyntax)
-						s = s.WithTrailingTrivia (s.GetTrailingTrivia().Prepend (GetIdComment()));
-					if (s is ReturnStatementSyntax && ((ReturnStatementSyntax)s).Expression == null)
+					if (s is ContinueStatementSyntax || s is BreakStatementSyntax)
 						s = s.WithTrailingTrivia (s.GetTrailingTrivia().Prepend (GetIdComment()));
 				}
 
