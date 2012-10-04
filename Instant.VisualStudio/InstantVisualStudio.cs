@@ -169,7 +169,7 @@ namespace Instant.VisualStudio
 				if (root.GetDiagnostics().Any (d => d.Info.Severity == DiagnosticSeverity.Error))
 					return;
 
-			    foreach (var m in root.DescendantNodes().OfType<MethodDeclarationSyntax>())
+			    foreach (var m in root.DescendantNodes (n => !(n is MethodDeclarationSyntax)).OfType<MethodDeclarationSyntax>())
 			    {
 				    if (cancelToken.IsCancellationRequested)
 					    return;
