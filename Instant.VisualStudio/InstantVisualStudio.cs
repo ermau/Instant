@@ -164,7 +164,7 @@ namespace Instant.VisualStudio
 
 			    string code = snapshot.GetText();
 
-			    CompilationUnitSyntax root = SyntaxTree.ParseText (code).GetRoot();
+			    CompilationUnitSyntax root = SyntaxTree.ParseText (code, cancellationToken: cancelToken).GetRoot (cancelToken);
 			    
 				if (root.GetDiagnostics().Any (d => d.Info.Severity == DiagnosticSeverity.Error))
 					return;
@@ -186,6 +186,9 @@ namespace Instant.VisualStudio
 				    
 				    this.dispatcher.BeginInvoke ((Action)(() =>
 				    {
+						if (cancelToken.IsCancellationRequested)
+							return;
+
 					    Span methodSpan = Span.FromBounds (index, location.SourceSpan.End + 1);
 					    ITrackingSpan tracking;
 					    
