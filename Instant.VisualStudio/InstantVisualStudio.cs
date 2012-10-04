@@ -166,8 +166,6 @@ namespace Instant.VisualStudio
 				    if (cancel.IsCancellationRequested)
 					    return;
 
-					MethodDeclarationSyntax method = m;
-
 				    Location location = m.GetLocation();
 
 				    int index = location.SourceSpan.Start;
@@ -282,7 +280,7 @@ namespace Instant.VisualStudio
 			{
 				string code = this.context.Span.GetText (this.view.TextSnapshot);
 
-				IDictionary<int, MethodCall> methods = await Instantly.InstrumentAndEvaluate (code, this.context.TestCode, cancel.Token)
+				IDictionary<int, MethodCall> methods =	await Instantly.InstrumentAndEvaluate (code, this.context.TestCode, cancel.Token)
 														?? this.context.LastData;
 				if (methods == null || methods.Count == 0)
 					return;

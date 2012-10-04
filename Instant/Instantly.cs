@@ -90,10 +90,10 @@ namespace Instant
 				// Eventually when we support full projects, we can pull these
 				// directly from the project. Until then, general basics.
 				ScriptEngine engine = new ScriptEngine();
-				engine.AddReference (typeof (string).Assembly);// mscorlib
-				engine.AddReference (typeof (System.Diagnostics.Stopwatch).Assembly);// System.dll
-				engine.AddReference (typeof (Enumerable).Assembly); // System.Core.dll
-				engine.AddReference (typeof (Hook).Assembly); // this
+				engine.AddReference (typeof (string).Assembly); // mscorlib
+				engine.AddReference (typeof (System.Diagnostics.Stopwatch).Assembly); // System.dll
+				engine.AddReference (typeof (Enumerable).Assembly); // System.Core
+				engine.AddReference (typeof (Hook).Assembly); // Instant.dll
 
 				engine.ImportNamespace ("System");
 				engine.ImportNamespace ("System.Linq");

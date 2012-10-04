@@ -210,10 +210,8 @@ namespace Instant
 
 				if (this.loopLevel > 0)
 				{
-					if (statement is ContinueStatementSyntax || statement is BreakStatementSyntax)// || statement is ReturnStatementSyntax)
+					if (statement is ContinueStatementSyntax || statement is BreakStatementSyntax)
 						statements.Add (Syntax.ParseStatement ("Instant.Hook.EndInsideLoop (" + GetIdString() + ");"));
-					//if (statement is ReturnStatementSyntax && ((ReturnStatementSyntax)statement).Expression == null)
-					//	statements.Add (Syntax.ParseStatement ("Instant.Hook.LogReturn (" + GetIdString() + ");"));
 				}
 
 				statements.Add (statement);

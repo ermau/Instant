@@ -30,6 +30,7 @@ namespace Instant.VisualStudio.ViewModels
 		protected override void OnOperationChanged()
 		{
 			OnPropertyChanged ("StateChange");
+			base.OnOperationChanged();
 		}
 	}
 }
