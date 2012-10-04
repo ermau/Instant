@@ -40,26 +40,26 @@ using Task = System.Threading.Tasks.Task;
 
 namespace Instant.VisualStudio
 {
-    public class InstantVisualStudio
-    {
+	public class InstantVisualStudio
+	{
 		public InstantVisualStudio (IWpfTextView view)
-        {
-            this.view = view;
-            this.layer = view.GetAdornmentLayer("Instant.VisualStudio");
+		{
+			this.view = view;
+			this.layer = view.GetAdornmentLayer("Instant.VisualStudio");
 
-            //Listen to any event that changes the layout (text changes, scrolling, etc)
-            this.view.LayoutChanged += OnLayoutChanged;
+			//Listen to any event that changes the layout (text changes, scrolling, etc)
+			this.view.LayoutChanged += OnLayoutChanged;
 
-	        this.dispatcher = Dispatcher.CurrentDispatcher;
-        }
+			this.dispatcher = Dispatcher.CurrentDispatcher;
+		}
 
 		private readonly IAdornmentLayer layer;
 		private readonly IWpfTextView view;
 
-	    private CancellationTokenSource cancelSource;
-	    private readonly Dispatcher dispatcher;
+		private CancellationTokenSource cancelSource;
+		private readonly Dispatcher dispatcher;
 
-	    private ExecutionContext context;
+		private ExecutionContext context;
 
 		private class ExecutionContext
 		{
@@ -71,13 +71,13 @@ namespace Instant.VisualStudio
 		}
 
 		private readonly BidirectionalDictionary<ITrackingSpan, FrameworkElement> adorners = new BidirectionalDictionary<ITrackingSpan, FrameworkElement>();
-	    private readonly _DTE dte = (_DTE)Package.GetGlobalService (typeof (DTE));
+		private readonly _DTE dte = (_DTE)Package.GetGlobalService (typeof (DTE));
 
-	    /// <summary>
-        /// On layout change add the adornment to any reformatted lines
-        /// </summary>
-        private void OnLayoutChanged (object sender, TextViewLayoutChangedEventArgs e)
-	    {
+		/// <summary>
+		/// On layout change add the adornment to any reformatted lines
+		/// </summary>
+		private void OnLayoutChanged (object sender, TextViewLayoutChangedEventArgs e)
+		{
 			var cancel = GetCancelSource();
 
 			if (this.context != null)
@@ -95,8 +95,8 @@ namespace Instant.VisualStudio
 				}
 			}
 
-		    LayoutButtons (e.NewSnapshot, cancel.Token);
-	    }
+			LayoutButtons (e.NewSnapshot, cancel.Token);
+		}
 
 		// We can likely set up a cache for all these, just need to ensure they're
 		// cleared when the user changes them.
@@ -156,45 +156,45 @@ namespace Instant.VisualStudio
 			return cancel;
 		}
 
-	    private void LayoutButtons (ITextSnapshot newSnapshot, CancellationToken cancelToken)
-	    {
-		    Task.Factory.StartNew (s =>
-		    {
-			    var snapshot = (ITextSnapshot)s;
+		private void LayoutButtons (ITextSnapshot newSnapshot, CancellationToken cancelToken)
+		{
+			Task.Factory.StartNew (s =>
+			{
+				var snapshot = (ITextSnapshot)s;
 
-			    string code = snapshot.GetText();
+				string code = snapshot.GetText();
 
-			    CompilationUnitSyntax root = SyntaxTree.ParseText (code, cancellationToken: cancelToken).GetRoot (cancelToken);
-			    
+				CompilationUnitSyntax root = SyntaxTree.ParseText (code, cancellationToken: cancelToken).GetRoot (cancelToken);
+				
 				if (root.GetDiagnostics().Any (d => d.Info.Severity == DiagnosticSeverity.Error))
 					return;
 
-			    foreach (var m in root.DescendantNodes (n => !(n is MethodDeclarationSyntax)).OfType<MethodDeclarationSyntax>())
-			    {
-				    if (cancelToken.IsCancellationRequested)
-					    return;
+				foreach (var m in root.DescendantNodes (n => !(n is MethodDeclarationSyntax)).OfType<MethodDeclarationSyntax>())
+				{
+					if (cancelToken.IsCancellationRequested)
+						return;
 
-				    Location location = m.GetLocation();
+					Location location = m.GetLocation();
 
-				    int index = location.SourceSpan.Start;
-				    ITextSnapshotLine line = snapshot.GetLineFromPosition (index);
+					int index = location.SourceSpan.Start;
+					ITextSnapshotLine line = snapshot.GetLineFromPosition (index);
 					
 					// TODO: Fix this for multi-line method signatures
-				    string methodSignature = line.GetText();
+					string methodSignature = line.GetText();
 					if (this.context != null && methodSignature != this.context.MethodSignature)
 						continue;
-				    
-				    this.dispatcher.BeginInvoke ((Action)(() =>
-				    {
+					
+					this.dispatcher.BeginInvoke ((Action)(() =>
+					{
 						if (cancelToken.IsCancellationRequested)
 							return;
 
-					    Span methodSpan = Span.FromBounds (index, location.SourceSpan.End + 1);
-					    ITrackingSpan tracking;
-					    
+						Span methodSpan = Span.FromBounds (index, location.SourceSpan.End + 1);
+						ITrackingSpan tracking;
+						
 						Button button = FindAdorner<Button> (methodSpan, this.view.TextSnapshot, out tracking);
 
-					    bool preexisting = false;
+						bool preexisting = false;
 						if (tracking == null)
 						{
 							tracking = snapshot.CreateTrackingSpan (methodSpan, SpanTrackingMode.EdgeExclusive);
@@ -205,7 +205,7 @@ namespace Instant.VisualStudio
 						else
 							preexisting = true;
 
-					    if (this.context == null || methodSignature != this.context.MethodSignature)
+						if (this.context == null || methodSignature != this.context.MethodSignature)
 						{
 							if (!preexisting)
 								button.Click += OnClickInstant;
@@ -225,59 +225,59 @@ namespace Instant.VisualStudio
 							button.Content = "Stop Instant";
 						}
 
-					    SnapshotSpan span = new SnapshotSpan (this.view.TextSnapshot, line.Start, line.Length);
+						SnapshotSpan span = new SnapshotSpan (this.view.TextSnapshot, line.Start, line.Length);
 
-					    Geometry g = this.view.TextViewLines.GetMarkerGeometry (span, true, new Thickness());
-					    if (g != null)
-					    {
-						    Canvas.SetLeft (button, g.Bounds.Right + 10);
-						    Canvas.SetTop (button, g.Bounds.Top);
-						    button.MaxHeight = g.Bounds.Height;
+						Geometry g = this.view.TextViewLines.GetMarkerGeometry (span, true, new Thickness());
+						if (g != null)
+						{
+							Canvas.SetLeft (button, g.Bounds.Right + 10);
+							Canvas.SetTop (button, g.Bounds.Top);
+							button.MaxHeight = g.Bounds.Height;
 
 							if (!preexisting)
 							{
 								this.adorners[tracking] = button;
 								this.layer.AddAdornment (AdornmentPositioningBehavior.TextRelative, span, null, button, AdornerRemoved);
 							}
-					    }
-				    }));
-			    }
-		    }, newSnapshot, cancelToken);
-	    }
+						}
+					}));
+				}
+			}, newSnapshot, cancelToken);
+		}
 
-	    private void AdornerRemoved (object tag, UIElement element)
-	    {
-		    this.adorners.Inverse.Remove ((FrameworkElement)element);
-	    }
+		private void AdornerRemoved (object tag, UIElement element)
+		{
+			this.adorners.Inverse.Remove ((FrameworkElement)element);
+		}
 
-	    private void OnClickStopInstant (object sender, RoutedEventArgs e)
-	    {
-		    this.context = null;
-		    this.layer.RemoveAllAdornments();
-		    LayoutButtons (this.view.TextSnapshot, GetCancelSource().Token);
-	    }
+		private void OnClickStopInstant (object sender, RoutedEventArgs e)
+		{
+			this.context = null;
+			this.layer.RemoveAllAdornments();
+			LayoutButtons (this.view.TextSnapshot, GetCancelSource().Token);
+		}
 
-	    private void OnClickInstant (object sender, RoutedEventArgs e)
-	    {
-		    var window = new TestCodeWindow();
-		    window.Owner = Application.Current.MainWindow;
-		    string testCode = window.ShowForTestCode();
+		private void OnClickInstant (object sender, RoutedEventArgs e)
+		{
+			var window = new TestCodeWindow();
+			window.Owner = Application.Current.MainWindow;
+			string testCode = window.ShowForTestCode();
 			if (testCode == null)
 				return;
 
 			Button b = (Button)sender;
-		    this.context = (ExecutionContext)b.Tag;
-		    this.context.TestCode = testCode;
+			this.context = (ExecutionContext)b.Tag;
+			this.context.TestCode = testCode;
 
 			this.layer.RemoveAllAdornments();
 
-		    var source = GetCancelSource();
-		    LayoutButtons (this.view.TextSnapshot, source.Token);
+			var source = GetCancelSource();
+			LayoutButtons (this.view.TextSnapshot, source.Token);
 			Execute (source.Token);
-	    }
+		}
 
 		private static readonly Regex IdRegex = new Regex (@"/\*_(\d+)_\*/", RegexOptions.Compiled);
-		private async void Execute (CancellationToken cancelToken)
+		private void Execute (CancellationToken cancelToken)
 		{
 			try
 			{
@@ -313,9 +313,9 @@ namespace Instant.VisualStudio
 			AdornCode (this.context.Span.GetText (this.view.TextSnapshot), this.context.LastData, token);
 		}
 
-	    private void AdornCode (string code, IDictionary<int, MethodCall> methods, CancellationToken cancelToken)
-	    {
-		    ITextSnapshot snapshot = this.view.TextSnapshot;
+		private void AdornCode (string code, IDictionary<int, MethodCall> methods, CancellationToken cancelToken)
+		{
+			ITextSnapshot snapshot = this.view.TextSnapshot;
 
 			try
 			{
@@ -356,7 +356,7 @@ namespace Instant.VisualStudio
 			catch (OperationCanceledException)
 			{
 			}
-	    }
+		}
 
 		private void AdornOperationContainer (OperationContainer container, ITextSnapshot snapshot, IDictionary<int, ITextSnapshotLine> lineMap, CancellationToken cancelToken)
 		{
@@ -395,8 +395,6 @@ namespace Instant.VisualStudio
 
 				if (operation is Loop)
 				{
-					Loop loop = (Loop)operation;
-
 					var loopModel = (LoopViewModel)model;
 
 					LoopIteration[] iterations = loopModel.Iterations;
@@ -418,7 +416,6 @@ namespace Instant.VisualStudio
 								}
 							}
 
-							//this.layer.RemoveAllAdornments();	
 							AdornCode (cancelToken);
 						};
 					}
@@ -463,12 +460,12 @@ namespace Instant.VisualStudio
 			}
 		}
 
-	    private static readonly Dictionary<Type, OperationVisuals> Mapping = new Dictionary<Type, OperationVisuals>
-	    {
+		private static readonly Dictionary<Type, OperationVisuals> Mapping = new Dictionary<Type, OperationVisuals>
+		{
 			{ typeof(StateChange), OperationVisuals.Create (() => new StateChangeView(), () => new StateChangeViewModel()) },
 			{ typeof(ReturnValue), OperationVisuals.Create (() => new ReturnValueView(), () => new ReturnValueViewModel()) },
 			{ typeof(Loop), OperationVisuals.Create (() => new LoopView(), () => new LoopViewModel()) }
-	    };
+		};
 
 		private FrameworkElement FindAdorner (int id)
 		{
@@ -497,5 +494,5 @@ namespace Instant.VisualStudio
 
 			return null;
 		}
-    }
+	}
 }
