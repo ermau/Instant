@@ -395,8 +395,8 @@ namespace Instant.VisualStudio
 					Loop loop = (Loop)operation;
 
 					var loopModel = (LoopViewModel)model;
-						
-					LoopIteration[] iterations = loop.Operations.OfType<LoopIteration>().ToArray();
+
+					LoopIteration[] iterations = loopModel.Iterations;
 					if (!preexisted || loopModel.Iteration > iterations.Length - 1)
 						loopModel.Iteration = iterations.Length;
 
