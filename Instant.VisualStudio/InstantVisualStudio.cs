@@ -404,8 +404,8 @@ namespace Instant.VisualStudio
 					{
 						loopModel.IterationChanged += (sender, args) =>
 						{
-							LoopIteration iteration = loopModel.Iterations[args.OldValue - 1];
-							foreach (Operation op in iteration.Operations)
+							LoopIteration iteration = args.PreviousIteration;
+							if (iteration != null)
 							{
 								foreach (int id in iteration.Operations.Select (o => o.Id).Distinct())
 								{

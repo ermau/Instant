@@ -25,19 +25,19 @@ namespace Instant.VisualStudio.ViewModels
 	public class IterationChangedEventArgs
 		: EventArgs
 	{
-		public IterationChangedEventArgs (int oldValue, int newValue)
+		public IterationChangedEventArgs (LoopIteration oldValue, LoopIteration newValue)
 		{
-			OldValue = oldValue;
-			NewValue = newValue;
+			PreviousIteration = oldValue;
+			NewIteration = newValue;
 		}
 
-		public int OldValue
+		public LoopIteration PreviousIteration
 		{
 			get;
 			private set;
 		}
 
-		public int NewValue
+		public LoopIteration NewIteration
 		{
 			get;
 			private set;
@@ -80,7 +80,7 @@ namespace Instant.VisualStudio.ViewModels
 				int old = this.iteration;
 				this.iteration = value;
 				OnPropertyChanged ("Iteration");
-				OnIterationChanged (new IterationChangedEventArgs (old, value));
+				OnIterationChanged (new IterationChangedEventArgs (this.iterations[old - 1], this.iterations[value - 1]));
 				this.adjustIteration.ChangeCanExecute();
 			}
 		}
@@ -92,14 +92,19 @@ namespace Instant.VisualStudio.ViewModels
 
 		private readonly DelegatedCommand adjustIteration;
 		private LoopIteration[] iterations;
-		private int iteration;
+		private int iteration = 1;
 
 		protected override void OnOperationChanged()
 		{
 			base.OnOperationChanged();
 
+			LoopIteration piteration = (this.iterations != null) ? this.iterations[this.iteration - 1] : null;
 			this.iterations = Loop.Operations.OfType<LoopIteration>().ToArray();
-			Iteration = this.iterations.Length;
+
+			this.iteration = this.iterations.Length;
+			OnPropertyChanged ("Iteration");
+			OnIterationChanged (new IterationChangedEventArgs (piteration, this.iterations[this.iterations.Length - 1]));
+
 			OnPropertyChanged ("TotalIterations");
 			this.adjustIteration.ChangeCanExecute();
 		}
