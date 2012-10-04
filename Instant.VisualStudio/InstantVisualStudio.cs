@@ -65,6 +65,7 @@ namespace Instant.VisualStudio
 		{
 			public string MethodSignature;
 			public ITrackingSpan Span;
+			public ITextVersion Version;
 			public string TestCode;
 			public IDictionary<int, MethodCall> LastData;
 		}
@@ -83,9 +84,15 @@ namespace Instant.VisualStudio
 			{
 				Span currentSpan = this.context.Span.GetSpan (e.NewSnapshot);
 				if (e.NewOrReformattedSpans.Any (s => currentSpan.Contains (s)))
-					Execute();
-				else
-					AdornCode();
+				{
+					if (this.context.Version != e.NewSnapshot.Version)
+					{
+						this.context.Version = e.NewSnapshot.Version;
+						Execute();
+					}
+					else
+						AdornCode();
+				}
 			}
 
 		    LayoutButtons (e.NewSnapshot);
