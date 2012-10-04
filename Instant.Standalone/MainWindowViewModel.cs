@@ -210,7 +210,7 @@ namespace Instant.Standalone
 
 			var sink = new MemoryInstrumentationSink();
 			Submission s = Hook.CreateSubmission (sink, this.cancelSource.Token);
-			SyntaxNode instrumented = await Instantly.Instrument (input, s.SubmissionId);
+			SyntaxNode instrumented = await Instantly.Instrument (input, s);
 			
 			if (DebugTree)
 				LogSyntaxTree (instrumented);

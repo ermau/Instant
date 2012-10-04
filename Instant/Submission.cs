@@ -15,14 +15,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System.Threading;
+
 namespace Instant
 {
 	public class Submission
 	{
-		public Submission (int submissionId, IInstrumentationSink instrumentationSink)
+		public Submission (int submissionId, IInstrumentationSink instrumentationSink, CancellationToken cancelToken = default(CancellationToken))
 		{
 			SubmissionId = submissionId;
 			Sink = instrumentationSink;
+			CancelToken = cancelToken;
 		}
 
 		public int SubmissionId
@@ -32,6 +35,12 @@ namespace Instant
 		}
 
 		public IInstrumentationSink Sink
+		{
+			get;
+			private set;
+		}
+
+		public CancellationToken CancelToken
 		{
 			get;
 			private set;

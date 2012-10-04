@@ -32,11 +32,9 @@ namespace Instant
 				if (submission != null && submission.SubmissionId > id)
 					throw new OperationCanceledException (cancelToken);
 
-				return submission = new Submission (id, instrumentationSink);
+				return submission = new Submission (id, instrumentationSink, cancelToken);
 			}
 		}
-
-		public static CancellationToken CancelToken;
 
 		public static void BeginLoop (int submissionId, int id)
 		{
@@ -46,25 +44,25 @@ namespace Instant
 
 		public static void BeginInsideLoop (int submissionId, int id)
 		{
-			var sink = GetSink (submissionId);
-			sink.BeginInsideLoop (id);
-
-			if (CancelToken.IsCancellationRequested)
+			var s = GetSubmission (submissionId);
+			if (s.CancelToken.IsCancellationRequested)
 			{
 				EndLoop (submissionId, id);
-				throw new OperationCanceledException (CancelToken);
+				throw new OperationCanceledException();
 			}
+
+			s.Sink.BeginInsideLoop (submissionId);
 		}
 
 		public static void EndInsideLoop (int submissionId, int id)
 		{
-			var sink = GetSink (submissionId);
-			sink.EndInsideLoop (id);
-			
-			if (CancelToken.IsCancellationRequested)
+			var s = GetSubmission (submissionId);
+			s.Sink.EndInsideLoop (id);
+
+			if (s.CancelToken.IsCancellationRequested)
 			{
 				EndLoop (submissionId, id);
-				throw new OperationCanceledException (CancelToken);
+				throw new OperationCanceledException();
 			}
 		}
 
@@ -106,21 +104,28 @@ namespace Instant
 
 		public static void LogEnterMethod (int submissionId, int id, string name, params StateChange[] arguments)
 		{
-			var sink = GetSink (submissionId);
-			sink.LogEnterMethod (id, name, arguments);
+			var s = GetSubmission (submissionId);
+			s.CancelToken.ThrowIfCancellationRequested();
+
+			s.Sink.LogEnterMethod (id, name, arguments);
 		}
 
 		private static readonly object SubmissionLock = new object();
 		private static int currentSubmission;
 		private static Submission submission;
 
-		private static IInstrumentationSink GetSink (int submissionId)
+		private static Submission GetSubmission (int submissionId)
 		{
 			Submission s = submission;
 			if (s == null || s.SubmissionId != submissionId)
 				throw new OperationCanceledException();
 
-			return s.Sink;
+			return s;
+		}
+
+		private static IInstrumentationSink GetSink (int submissionId)
+		{
+			return GetSubmission (submissionId).Sink;
 		}
 	}
 }

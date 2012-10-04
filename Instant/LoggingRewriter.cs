@@ -29,9 +29,12 @@ namespace Instant
 	{
 		private static readonly SyntaxToken AssignToken = Syntax.Token (SyntaxKind.EqualsToken);
 
-		public LoggingRewriter (int id)
+		public LoggingRewriter (Submission submission)
 		{
-			this.submissionId = id;
+			if (submission == null)
+				throw new ArgumentNullException ("submission");
+
+			this.submissionId = submission.SubmissionId;
 		}
 
 		public override SyntaxNode VisitPrefixUnaryExpression (PrefixUnaryExpressionSyntax node)

@@ -37,18 +37,13 @@ namespace Instant
 		/// <param name="submissionId">The submission ID retrieved from <see cref="Hook.CreateSubmission"/>.</param>
 		/// <returns>A task for a <see cref="SyntaxNode"/> representing the instrumented code.</returns>
 		/// <seealso cref="Hook.CreateSubmission"/>
-		public static Task<SyntaxNode> Instrument (SyntaxNode code, int submissionId)
+		public static Task<SyntaxNode> Instrument (SyntaxNode code, Submission submission)
 		{
 			if (code == null)
 				throw new ArgumentNullException ("code");
 
 			return Task<SyntaxNode>.Factory.StartNew (s =>
-			{
-				SyntaxNode root = (SyntaxNode)s;
-				//root = new FixingRewriter().Visit (root);
-
-				return new LoggingRewriter (submissionId).Visit (root);
-			}, code);
+				InstrumentCore ((SyntaxNode)s, submission), code);
 		}
 
 		/// <summary>
@@ -58,17 +53,26 @@ namespace Instant
 		/// <param name="submissionId">The submission ID retrieved from <see cref="Hook.CreateSubmission"/>.</param>
 		/// <returns>A task for a <see cref="SyntaxNode"/> representing the instrumented code.</returns>
 		/// <seealso cref="Hook.CreateSubmission"/>
-		public static Task<SyntaxNode> Instrument (string code, int submissionId)
+		public static Task<SyntaxNode> Instrument (string code, Submission submission)
 		{
 			if (code == null)
 				throw new ArgumentNullException ("code");
 
 			return Task<SyntaxNode>.Factory.StartNew (s =>
 			{
-				string c = (string)s;
+				SyntaxTree tree = SyntaxTree.ParseText ((string)s, cancellationToken: submission.CancelToken);
+				SyntaxNode node = tree.GetRoot (submission.CancelToken);
 
-				return Instrument (Syntax.ParseCompilationUnit (c), submissionId).Result;
+				return InstrumentCore (node, submission);
 			}, code);
+		}
+
+		private static SyntaxNode InstrumentCore (SyntaxNode root, Submission submission)
+		{
+			if (root.GetDiagnostics().Any (d => d.Info.Severity == DiagnosticSeverity.Warning))
+				return null;
+
+			return new LoggingRewriter (submission).Visit (root);
 		}
 
 		/// <summary>
@@ -130,7 +134,10 @@ namespace Instant
 			var sink = new MemoryInstrumentationSink();
 			Submission submission = Hook.CreateSubmission (sink, cancelToken);
 			
-			SyntaxNode instrumented = await Instrument (code, submission.SubmissionId).ConfigureAwait (false);
+			SyntaxNode instrumented = await Instrument (code, submission).ConfigureAwait (false);
+			if (instrumented == null)
+				return null;
+
 			await Evaluate (instrumented, evalSource).ConfigureAwait (false);
 
 			return sink.GetRootCalls();
