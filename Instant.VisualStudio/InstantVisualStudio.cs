@@ -78,7 +78,7 @@ namespace Instant.VisualStudio
         /// </summary>
         private void OnLayoutChanged (object sender, TextViewLayoutChangedEventArgs e)
 	    {
-			//this.layer.RemoveAllAdornments();
+			var cancel = GetCancelSource();
 
 			if (this.context != null)
 			{
@@ -88,14 +88,14 @@ namespace Instant.VisualStudio
 					if (this.context.Version != e.NewSnapshot.Version)
 					{
 						this.context.Version = e.NewSnapshot.Version;
-						Execute();
+						Execute (cancel.Token);
 					}
 					else
-						AdornCode();
+						AdornCode (cancel.Token);
 				}
 			}
 
-		    LayoutButtons (e.NewSnapshot);
+		    LayoutButtons (e.NewSnapshot, cancel.Token);
 	    }
 
 		// We can likely set up a cache for all these, just need to ensure they're
@@ -143,13 +143,21 @@ namespace Instant.VisualStudio
 					(byte)((oleColor >> 16) & 0xFF)));
 		}
 
-	    private void LayoutButtons (ITextSnapshot newSnapshot)
-	    {
-		    var cancel = new CancellationTokenSource();
-		    CancellationTokenSource oldCancel = Interlocked.Exchange (ref this.cancelSource, cancel);
-		    if (oldCancel != null)
-			    oldCancel.Cancel();
+		private CancellationTokenSource GetCancelSource()
+		{
+			var cancel = new CancellationTokenSource();
+			CancellationTokenSource oldCancel = Interlocked.Exchange (ref this.cancelSource, cancel);
+			if (oldCancel != null)
+			{
+				oldCancel.Cancel();
+				oldCancel.Dispose();
+			}
 
+			return cancel;
+		}
+
+	    private void LayoutButtons (ITextSnapshot newSnapshot, CancellationToken cancelToken)
+	    {
 		    Task.Factory.StartNew (s =>
 		    {
 			    var snapshot = (ITextSnapshot)s;
@@ -163,7 +171,7 @@ namespace Instant.VisualStudio
 
 			    foreach (var m in root.DescendantNodes().OfType<MethodDeclarationSyntax>())
 			    {
-				    if (cancel.IsCancellationRequested)
+				    if (cancelToken.IsCancellationRequested)
 					    return;
 
 				    Location location = m.GetLocation();
@@ -231,7 +239,7 @@ namespace Instant.VisualStudio
 					    }
 				    }));
 			    }
-		    }, newSnapshot, cancel.Token);
+		    }, newSnapshot, cancelToken);
 	    }
 
 	    private void AdornerRemoved (object tag, UIElement element)
@@ -243,7 +251,7 @@ namespace Instant.VisualStudio
 	    {
 		    this.context = null;
 		    this.layer.RemoveAllAdornments();
-		    LayoutButtons (this.view.TextSnapshot);
+		    LayoutButtons (this.view.TextSnapshot, GetCancelSource().Token);
 	    }
 
 	    private void OnClickInstant (object sender, RoutedEventArgs e)
@@ -259,86 +267,95 @@ namespace Instant.VisualStudio
 		    this.context.TestCode = testCode;
 
 			this.layer.RemoveAllAdornments();
-		    LayoutButtons (this.view.TextSnapshot);
 
-			Execute();
+		    var source = GetCancelSource();
+		    LayoutButtons (this.view.TextSnapshot, source.Token);
+			Execute (source.Token);
 	    }
 
 		private static readonly Regex IdRegex = new Regex (@"/\*_(\d+)_\*/", RegexOptions.Compiled);
-	    private CancellationTokenSource executeCancelSource;
-		private async void Execute()
+		private async void Execute (CancellationToken cancelToken)
 		{
-			var cancel = new CancellationTokenSource();
-		    CancellationTokenSource oldCancel = Interlocked.Exchange (ref this.executeCancelSource, cancel);
-		    if (oldCancel != null)
-		    {
-				oldCancel.Cancel();
-				oldCancel.Dispose();
-		    }
-
 			try
 			{
 				string code = this.context.Span.GetText (this.view.TextSnapshot);
 
-				IDictionary<int, MethodCall> methods =	await Instantly.InstrumentAndEvaluate (code, this.context.TestCode, cancel.Token)
-														?? this.context.LastData;
-				if (methods == null || methods.Count == 0)
-					return;
-				
-				this.context.LastData = methods;
-				AdornCode (code, methods);
+				Instantly.InstrumentAndEvaluate (code, this.context.TestCode, cancelToken).ContinueWith (t =>
+				{
+					if (t.IsCanceled || t.IsFaulted)
+						return;
+
+					var methods = t.Result ?? this.context.LastData;
+					if (methods == null || methods.Count == 0)
+						return;
+
+					// BUG: These can arrive out of order
+					this.dispatcher.BeginInvoke ((Action)(() =>
+					{
+						this.context.LastData = methods;
+						AdornCode (code, methods, cancelToken);
+					}));
+				});
 			}
 			catch (Exception) // We don't have a way to show errors right now
 			{
 			}
 		}
 
-		private void AdornCode ()
+		private void AdornCode (CancellationToken token)
 		{
 			if (this.context == null || this.context.LastData == null)
 				return;
 
-			AdornCode (this.context.Span.GetText (this.view.TextSnapshot), this.context.LastData);
+			AdornCode (this.context.Span.GetText (this.view.TextSnapshot), this.context.LastData, token);
 		}
 
-	    private void AdornCode (string code, IDictionary<int, MethodCall> methods)
+	    private void AdornCode (string code, IDictionary<int, MethodCall> methods, CancellationToken cancelToken)
 	    {
 		    ITextSnapshot snapshot = this.view.TextSnapshot;
 
-		    SyntaxNode root = SyntaxTree.ParseText (code).GetRoot();
-		    //root = new FixingRewriter().Visit (root);
-		    var ided = new IdentifyingVisitor().Visit (root);
+			try
+			{
+				SyntaxNode root = SyntaxTree.ParseText (code, cancellationToken: cancelToken).GetRoot (cancelToken);
+				//root = new FixingRewriter().Visit (root);
+				var ided = new IdentifyingVisitor().Visit (root);
 
-		    Dictionary<int, ITextSnapshotLine> lineMap = new Dictionary<int, ITextSnapshotLine>();
+				Dictionary<int, ITextSnapshotLine> lineMap = new Dictionary<int, ITextSnapshotLine>();
 
-		    string line;
-		    int ln = snapshot.GetLineNumberFromPosition (this.context.Span.GetStartPoint (this.view.TextSnapshot));
-		    StringReader reader = new StringReader (ided.ToString());
-		    while ((line = reader.ReadLine()) != null)
-		    {
-			    MatchCollection matches = IdRegex.Matches (line);
-			    foreach (Match match in matches)
-			    {
-				    int id;
-				    if (!Int32.TryParse (match.Groups[1].Value, out id))
-					    continue;
+				string line;
+				int ln = snapshot.GetLineNumberFromPosition (this.context.Span.GetStartPoint (this.view.TextSnapshot));
+				StringReader reader = new StringReader (ided.ToString());
+				while ((line = reader.ReadLine()) != null)
+				{
+					MatchCollection matches = IdRegex.Matches (line);
+					foreach (Match match in matches)
+					{
+						cancelToken.ThrowIfCancellationRequested();
 
-				    ITextSnapshotLine lineSnapshot = snapshot.GetLineFromLineNumber (ln);
-				    lineMap[id] = lineSnapshot;
-			    }
+						int id;
+						if (!Int32.TryParse (match.Groups[1].Value, out id))
+							continue;
 
-			    ln++;
-		    }
+						ITextSnapshotLine lineSnapshot = snapshot.GetLineFromLineNumber (ln);
+						lineMap[id] = lineSnapshot;
+					}
 
-		    if (lineMap.Count == 0)
-			    return;
+					ln++;
+				}
 
-		    // TODO: Threads
-		    MethodCall container = methods.Values.First();
-		    AdornOperationContainer (container, snapshot, lineMap);
+				if (lineMap.Count == 0)
+					return;
+
+				// TODO: Threads
+				MethodCall container = methods.Values.First();
+				AdornOperationContainer (container, snapshot, lineMap, cancelToken);
+			}
+			catch (OperationCanceledException)
+			{
+			}
 	    }
 
-	    private void AdornOperationContainer (OperationContainer container, ITextSnapshot snapshot, IDictionary<int, ITextSnapshotLine> lineMap)
+		private void AdornOperationContainer (OperationContainer container, ITextSnapshot snapshot, IDictionary<int, ITextSnapshotLine> lineMap, CancellationToken cancelToken)
 		{
 			foreach (Operation operation in container.Operations)
 			{
@@ -396,12 +413,12 @@ namespace Instant.VisualStudio
 							}
 
 							//this.layer.RemoveAllAdornments();	
-							AdornCode();
+							AdornCode (cancelToken);
 						};
 					}
 
 					if (iterations.Length > 0)
-						AdornOperationContainer (iterations[loopModel.Iteration - 1], snapshot, lineMap);
+						AdornOperationContainer (iterations[loopModel.Iteration - 1], snapshot, lineMap, cancelToken);
 				}
 
 				Canvas.SetLeft (adorner, g.Bounds.Right + 10);
