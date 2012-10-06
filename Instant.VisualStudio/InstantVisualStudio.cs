@@ -56,7 +56,7 @@ namespace Instant.VisualStudio
 		private readonly IAdornmentLayer layer;
 		private readonly IWpfTextView view;
 
-		private CancellationTokenSource cancelSource;
+		private CancellationTokenSource cancelSource = new CancellationTokenSource();
 		private readonly Dispatcher dispatcher;
 
 		private ExecutionContext context;
@@ -78,8 +78,6 @@ namespace Instant.VisualStudio
 		/// </summary>
 		private void OnLayoutChanged (object sender, TextViewLayoutChangedEventArgs e)
 		{
-			var cancel = GetCancelSource();
-
 			if (this.context != null)
 			{
 				Span currentSpan = this.context.Span.GetSpan (e.NewSnapshot);
@@ -88,14 +86,14 @@ namespace Instant.VisualStudio
 					if (this.context.Version != e.NewSnapshot.Version)
 					{
 						this.context.Version = e.NewSnapshot.Version;
-						Execute (cancel.Token);
+						Execute (GetCancelSource().Token);
 					}
 					else
-						AdornCode (cancel.Token);
+						AdornCode (GetCancelSource (current: true).Token);
 				}
 			}
 
-			LayoutButtons (e.NewSnapshot, cancel.Token);
+			LayoutButtons (e.NewSnapshot, GetCancelSource (current: true).Token);
 		}
 
 		// We can likely set up a cache for all these, just need to ensure they're
@@ -143,8 +141,15 @@ namespace Instant.VisualStudio
 					(byte)((oleColor >> 16) & 0xFF)));
 		}
 
-		private CancellationTokenSource GetCancelSource()
+		private CancellationTokenSource GetCancelSource (bool current = false)
 		{
+			if (current)
+			{
+				var source = new CancellationTokenSource();
+				var currentSource = Interlocked.CompareExchange (ref this.cancelSource, source, null);
+				return currentSource ?? source;
+			}
+
 			var cancel = new CancellationTokenSource();
 			CancellationTokenSource oldCancel = Interlocked.Exchange (ref this.cancelSource, cancel);
 			if (oldCancel != null)
@@ -416,7 +421,7 @@ namespace Instant.VisualStudio
 								}
 							}
 
-							AdornCode (cancelToken);
+							AdornCode (GetCancelSource (current: true).Token);
 						};
 					}
 
