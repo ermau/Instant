@@ -39,30 +39,30 @@ namespace Instant
 
 		public override SyntaxNode VisitPrefixUnaryExpression (PrefixUnaryExpressionSyntax node)
 		{
-			IdentifierNameSyntax name = node.FindIdentifierName();
+			string name = node.FindIdentifierName();
 			if (name != null)
 			{
 				switch (node.Kind)
 				{
 					case SyntaxKind.PreIncrementExpression:
 					case SyntaxKind.PreDecrementExpression:
-						return GetLogExpression (name.Identifier.ValueText, node);
+						return GetLogExpression (name, node);
 				}
 			}
 
 			return base.VisitPrefixUnaryExpression (node);
 		}
 
-		public override SyntaxNode VisitPostfixUnaryExpression(PostfixUnaryExpressionSyntax node)
+		public override SyntaxNode VisitPostfixUnaryExpression (PostfixUnaryExpressionSyntax node)
 		{
-			IdentifierNameSyntax name = node.FindIdentifierName();
+			string name = node.FindIdentifierName();
 			if (name != null)
 			{
 				switch (node.Kind)
 				{
 					case SyntaxKind.PostIncrementExpression:
 					case SyntaxKind.PostDecrementExpression:
-						return Syntax.ParseExpression (String.Format ("Instant.Hook.LogPostfix ({0},{1},\"{2}\",{2})", GetIdString(), node, name.Identifier.ValueText));
+						return Syntax.ParseExpression (String.Format ("Instant.Hook.LogPostfix ({0},{1},\"{2}\",{2})", GetIdString(), node, name));
 				}
 			}
 
@@ -126,8 +126,8 @@ namespace Instant
 			if (node == null)
 				return newNode;
 
-			var nameSyntax = node.Left.FindIdentifierName();
-			if (nameSyntax == null)
+			var name = node.Left.FindIdentifierName();
+			if (name == null)
 				return newNode;
 
 			switch (node.Kind)
@@ -144,12 +144,12 @@ namespace Instant
 				case SyntaxKind.ExclusiveOrAssignExpression:
 					var token = Syntax.Token (GetComplexAssignOperator (node.Kind));
 
-					ExpressionSyntax expr = Syntax.ParseExpression (nameSyntax.Identifier.ValueText + token + node.Right);
+					ExpressionSyntax expr = Syntax.ParseExpression (name + token + node.Right);
 
-					return node.Update (node.Left, AssignToken, GetLogExpression (nameSyntax.Identifier.ValueText, expr));
+					return node.Update (node.Left, AssignToken, GetLogExpression (name, expr));
 
 				case SyntaxKind.AssignExpression:
-					return node.WithRight (GetLogExpression (nameSyntax.Identifier.ValueText, node.Right));
+					return node.WithRight (GetLogExpression (name, node.Right));
 
 				default:
 					return node;

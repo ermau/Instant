@@ -22,11 +22,11 @@ namespace Instant
 {
 	public static class Extensions
 	{
-		public static IdentifierNameSyntax FindIdentifierName (this ExpressionSyntax expression)
+		public static string FindIdentifierName (this ExpressionSyntax expression)
 		{
 			IdentifierNameSyntax name = expression as IdentifierNameSyntax;
 			if (name != null)
-				return name;
+				return name.Identifier.ValueText;
 
 			BinaryExpressionSyntax binaryExpression = expression as BinaryExpressionSyntax;
 			if (binaryExpression != null)
