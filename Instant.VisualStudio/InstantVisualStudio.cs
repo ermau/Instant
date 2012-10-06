@@ -452,7 +452,11 @@ namespace Instant.VisualStudio
 								}
 							}
 
-							AdornCode (this.view.TextSnapshot, GetCancelSource (current: true).Token);
+							ITextSnapshot s = this.view.TextSnapshot;
+							var map = this.context.LineMap ?? ConstructLineMap (this.view.TextSnapshot, GetCancelSource (current: true).Token, this.context.Span.GetText(s));
+
+							AdornOperationContainer (args.NewIteration, s, map, GetCancelSource (current: true).Token);
+							//AdornCode (this.view.TextSnapshot, GetCancelSource (current: true).Token);
 						};
 					}
 
