@@ -34,7 +34,7 @@ namespace Instant
 
 		public IDictionary<int, MethodCall> GetRootCalls()
 		{
-			if (Operations.Count == 0)
+			if (this.operations.Count == 0)
 				return null;
 
 			Dictionary<int, MethodCall> methods = new Dictionary<int, MethodCall>();
