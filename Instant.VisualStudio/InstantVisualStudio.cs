@@ -68,6 +68,7 @@ namespace Instant.VisualStudio
 			public ITextVersion Version;
 			public string TestCode;
 			public IDictionary<int, MethodCall> LastData;
+			public IDictionary<int, ITextSnapshotLine> LineMap;
 		}
 
 		private readonly BidirectionalDictionary<ITrackingSpan, FrameworkElement> adorners = new BidirectionalDictionary<ITrackingSpan, FrameworkElement>();
@@ -83,13 +84,14 @@ namespace Instant.VisualStudio
 				Span currentSpan = this.context.Span.GetSpan (e.NewSnapshot);
 				if (e.NewOrReformattedSpans.Any (s => currentSpan.Contains (s)))
 				{
-					if (this.context.Version != e.NewSnapshot.Version)
+					if (this.context.Version != e.NewSnapshot.Version) // Text changed
 					{
+						this.context.LineMap = null;
 						this.context.Version = e.NewSnapshot.Version;
-						Execute (GetCancelSource().Token);
+						Execute (e.NewSnapshot, GetCancelSource().Token);
 					}
 					else
-						AdornCode (GetCancelSource (current: true).Token);
+						AdornCode (e.NewSnapshot, GetCancelSource (current: true).Token);
 				}
 			}
 
@@ -276,17 +278,19 @@ namespace Instant.VisualStudio
 
 			this.layer.RemoveAllAdornments();
 
+			var snapshot = this.view.TextSnapshot;
+
 			var source = GetCancelSource();
-			LayoutButtons (this.view.TextSnapshot, source.Token);
-			Execute (source.Token);
+			LayoutButtons (snapshot, source.Token);
+			Execute (snapshot, source.Token);
 		}
 
 		private static readonly Regex IdRegex = new Regex (@"/\*_(\d+)_\*/", RegexOptions.Compiled);
-		private void Execute (CancellationToken cancelToken)
+		private void Execute (ITextSnapshot snapshot, CancellationToken cancelToken)
 		{
 			try
 			{
-				string code = this.context.Span.GetText (this.view.TextSnapshot);
+				string code = this.context.Span.GetText (snapshot);
 
 				Instantly.InstrumentAndEvaluate (code, this.context.TestCode, cancelToken).ContinueWith (t =>
 				{
@@ -298,11 +302,13 @@ namespace Instant.VisualStudio
 						return;
 
 					// BUG: These can arrive out of order
-					this.dispatcher.BeginInvoke ((Action)(() =>
-					{
-						this.context.LastData = methods;
-						AdornCode (code, methods, cancelToken);
-					}));
+					this.dispatcher.BeginInvoke ((Action<ITextSnapshot,string,IDictionary<int,MethodCall>,CancellationToken>)
+						((s,c,m,ct) =>
+						{
+							this.context.LastData = m;
+							AdornCode (s, c, m, ct);
+						}),
+						snapshot, code, methods, cancelToken);
 				});
 			}
 			catch (Exception) // We don't have a way to show errors right now
@@ -310,53 +316,27 @@ namespace Instant.VisualStudio
 			}
 		}
 
-		private void AdornCode (CancellationToken token)
+		private void AdornCode (ITextSnapshot snapshot, CancellationToken token)
 		{
 			if (this.context == null || this.context.LastData == null)
 				return;
 
-			AdornCode (this.context.Span.GetText (this.view.TextSnapshot), this.context.LastData, token);
+			AdornCode (snapshot, this.context.Span.GetText (snapshot), this.context.LastData, token);
 		}
 
-		private void AdornCode (string code, IDictionary<int, MethodCall> methods, CancellationToken cancelToken)
+		private void AdornCode (ITextSnapshot snapshot, string code, IDictionary<int, MethodCall> methods, CancellationToken cancelToken)
 		{
-			ITextSnapshot snapshot = this.view.TextSnapshot;
-
 			try
 			{
-				SyntaxNode root = SyntaxTree.ParseText (code, cancellationToken: cancelToken).GetRoot (cancelToken);
-				//root = new FixingRewriter().Visit (root);
-				var ided = new IdentifyingVisitor().Visit (root);
-
-				Dictionary<int, ITextSnapshotLine> lineMap = new Dictionary<int, ITextSnapshotLine>();
-
-				string line;
-				int ln = snapshot.GetLineNumberFromPosition (this.context.Span.GetStartPoint (this.view.TextSnapshot));
-				StringReader reader = new StringReader (ided.ToString());
-				while ((line = reader.ReadLine()) != null)
+				if (this.context.LineMap == null)
 				{
-					MatchCollection matches = IdRegex.Matches (line);
-					foreach (Match match in matches)
-					{
-						cancelToken.ThrowIfCancellationRequested();
-
-						int id;
-						if (!Int32.TryParse (match.Groups[1].Value, out id))
-							continue;
-
-						ITextSnapshotLine lineSnapshot = snapshot.GetLineFromLineNumber (ln);
-						lineMap[id] = lineSnapshot;
-					}
-
-					ln++;
+					if ((this.context.LineMap = ConstructLineMap (snapshot, cancelToken, code)) == null)
+						return;
 				}
-
-				if (lineMap.Count == 0)
-					return;
 
 				// TODO: Threads
 				MethodCall container = methods.Values.First();
-				AdornOperationContainer (container, snapshot, lineMap, cancelToken);
+				AdornOperationContainer (container, snapshot, this.context.LineMap, cancelToken);
 
 				foreach (ViewCache viewCache in this.views.Values)
 				{
@@ -368,6 +348,41 @@ namespace Instant.VisualStudio
 			catch (OperationCanceledException)
 			{
 			}
+		}
+
+		private Dictionary<int, ITextSnapshotLine> ConstructLineMap (ITextSnapshot snapshot, CancellationToken cancelToken, string code)
+		{
+			SyntaxNode root = SyntaxTree.ParseText (code, cancellationToken: cancelToken).GetRoot (cancelToken);
+			//root = new FixingRewriter().Visit (root);
+			var ided = new IdentifyingVisitor().Visit (root);
+
+			var lineMap = new Dictionary<int, ITextSnapshotLine>();
+
+			string line;
+			int ln = snapshot.GetLineNumberFromPosition (this.context.Span.GetStartPoint (this.view.TextSnapshot));
+			StringReader reader = new StringReader (ided.ToString());
+			while ((line = reader.ReadLine()) != null)
+			{
+				MatchCollection matches = IdRegex.Matches (line);
+				foreach (Match match in matches)
+				{
+					cancelToken.ThrowIfCancellationRequested();
+
+					int id;
+					if (!Int32.TryParse (match.Groups[1].Value, out id))
+						continue;
+
+					ITextSnapshotLine lineSnapshot = snapshot.GetLineFromLineNumber (ln);
+					lineMap[id] = lineSnapshot;
+				}
+
+				ln++;
+			}
+
+			if (lineMap.Count == 0)
+				return null;
+
+			return lineMap;
 		}
 
 		private readonly Dictionary<Type, ViewCache> views = new Dictionary<Type, ViewCache>();
@@ -437,7 +452,7 @@ namespace Instant.VisualStudio
 								}
 							}
 
-							AdornCode (GetCancelSource (current: true).Token);
+							AdornCode (this.view.TextSnapshot, GetCancelSource (current: true).Token);
 						};
 					}
 
