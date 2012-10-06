@@ -98,6 +98,7 @@
     <Compile Include="TestCodeWindow.xaml.cs">
       <DependentUpon>TestCodeWindow.xaml</DependentUpon>
     </Compile>
+    <Compile Include="ViewCache.cs" />
     <Compile Include="ViewModels\OperationViewModel.cs" />
     <Compile Include="ViewModels\ReturnValueViewModel.cs" />
     <Compile Include="ViewModels\StateChangeViewModel.cs" />

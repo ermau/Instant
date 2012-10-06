@@ -357,12 +357,20 @@ namespace Instant.VisualStudio
 				// TODO: Threads
 				MethodCall container = methods.Values.First();
 				AdornOperationContainer (container, snapshot, lineMap, cancelToken);
+
+				foreach (ViewCache viewCache in this.views.Values)
+				{
+					InstantView[] cleared = viewCache.ClearViews();
+					for (int i = 0; i < cleared.Length; i++)
+						this.layer.RemoveAdornment (cleared[i]);
+				}
 			}
 			catch (OperationCanceledException)
 			{
 			}
 		}
 
+		private readonly Dictionary<Type, ViewCache> views = new Dictionary<Type, ViewCache>();
 		private void AdornOperationContainer (OperationContainer container, ITextSnapshot snapshot, IDictionary<int, ITextSnapshotLine> lineMap, CancellationToken cancelToken)
 		{
 			foreach (Operation operation in container.Operations)
@@ -375,21 +383,24 @@ namespace Instant.VisualStudio
 				if (g == null)
 					continue;
 
-				OperationVisuals vs = Mapping[operation.GetType()];
+				Type opType = operation.GetType();
 
-				bool preexisted = true;
-				ITrackingSpan span;
-				InstantView adorner = (InstantView)FindAdorner (vs.ViewType, line.Extent, snapshot, out span);
-				if (adorner == null)
+				OperationVisuals vs = Mapping[opType];
+
+				ViewCache viewCache;
+				if (!views.TryGetValue (opType, out viewCache))
+					views[opType] = viewCache = new ViewCache (vs);
+
+				InstantView adorner;
+				bool preexisted = viewCache.TryGetView (out adorner);
+				if (!preexisted)
 				{
-					adorner = vs.CreateView();
 					adorner.FontSize = FontSize - 1;
 					adorner.FontFamily = FontFamily;
 					adorner.BorderBrush = BorderBrush;
 					adorner.Foreground = Foreground;
-					preexisted = false;
 				}
-				
+
 				adorner.Tag = operation.Id;
 
 				OperationViewModel model = adorner.DataContext as OperationViewModel;
@@ -413,9 +424,14 @@ namespace Instant.VisualStudio
 							LoopIteration iteration = args.PreviousIteration;
 							if (iteration != null)
 							{
-								foreach (int id in iteration.Operations.Select (o => o.Id).Distinct())
+								HashSet<int> removes = new HashSet<int>();
+								foreach (Operation op in iteration.Operations)
 								{
-									FrameworkElement opAdorner = FindAdorner (id);
+									if (removes.Contains (op.Id))
+										continue;
+
+									ViewCache cache = this.views[op.GetType()];
+									InstantView opAdorner = cache.GetView (op.Id);
 									if (opAdorner != null)
 										this.layer.RemoveAdornment (opAdorner);
 								}
@@ -434,35 +450,21 @@ namespace Instant.VisualStudio
 				adorner.Height = g.Bounds.Height - 2;
 				adorner.MaxHeight = g.Bounds.Height - 2;
 
-				if (span == null)
-					span = snapshot.CreateTrackingSpan (line.Extent, SpanTrackingMode.EdgeExclusive);
-
-				this.adorners[span] = adorner;
-
 				if (!preexisted)
-					this.layer.AddAdornment (AdornmentPositioningBehavior.TextRelative, line.Extent, null, adorner, AdornerRemoved);
+					this.layer.AddAdornment (AdornmentPositioningBehavior.TextRelative, line.Extent, null, adorner, OperationAdornerRemoved);
 			}
 		}
 
-		private class OperationVisuals
+		private void OperationAdornerRemoved (object tag, UIElement element)
 		{
-			public Type ViewType;
-			public Func<InstantView> CreateView;
-			public Type ViewModelType;
-			public Func<OperationViewModel> CreateViewModel;
+			InstantView adorner = (InstantView)element;
+			OperationViewModel vm = (OperationViewModel)adorner.DataContext;
 
-			public static OperationVisuals Create<TView,TViewModel> (Func<TView> createView, Func<TViewModel> createModel)
-				where TView : InstantView
-				where TViewModel : OperationViewModel
-			{
-				OperationVisuals visuals = new OperationVisuals();
-				visuals.CreateView = createView;
-				visuals.ViewType = typeof (TView);
-				visuals.CreateViewModel = createModel;
-				visuals.ViewModelType = typeof (TViewModel);
+			ViewCache cache;
+			if (!this.views.TryGetValue (vm.Operation.GetType(), out cache))
+				return;
 
-				return visuals;
-			}
+			cache.Remove (adorner);
 		}
 
 		private static readonly Dictionary<Type, OperationVisuals> Mapping = new Dictionary<Type, OperationVisuals>
@@ -471,11 +473,6 @@ namespace Instant.VisualStudio
 			{ typeof(ReturnValue), OperationVisuals.Create (() => new ReturnValueView(), () => new ReturnValueViewModel()) },
 			{ typeof(Loop), OperationVisuals.Create (() => new LoopView(), () => new LoopViewModel()) }
 		};
-
-		private FrameworkElement FindAdorner (int id)
-		{
-			return this.adorners.Values.FirstOrDefault (e => e.Tag != null && (int)e.Tag == id);
-		}
 
 		private T FindAdorner<T> (Span span, ITextSnapshot snapshot, out ITrackingSpan tracking)
 			where T : FrameworkElement
