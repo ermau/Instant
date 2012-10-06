@@ -40,6 +40,10 @@ namespace Instant
 			if (prefixUnaryExpression != null)
 				return FindIdentifierName (prefixUnaryExpression.Operand);
 
+			MemberAccessExpressionSyntax memberAccessExpression = expression as MemberAccessExpressionSyntax;
+			if (memberAccessExpression != null)
+				return memberAccessExpression.ToString();
+			
 			return null;
 		}
 
