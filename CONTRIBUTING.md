@@ -15,6 +15,7 @@ Guidelines
 ----------
 -	Don't submit random changes, only what's relevant. `git add -p` is great for this.
 -	Use short (<50 chars), descriptive commit messages with more description two lines down if needed.
+-	Avoid merge commits when possible.
 
 Syntax
 ------
