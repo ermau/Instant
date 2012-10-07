@@ -196,7 +196,7 @@ namespace Instant.VisualStudio
 						if (cancelToken.IsCancellationRequested)
 							return;
 
-						Span methodSpan = Span.FromBounds (index, location.SourceSpan.End + 1);
+						Span methodSpan = Span.FromBounds (index, location.SourceSpan.End);
 						ITrackingSpan tracking;
 						
 						Button button = FindAdorner<Button> (methodSpan, this.view.TextSnapshot, out tracking);
