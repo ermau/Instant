@@ -9,12 +9,15 @@ There is currently a prototype extension to Visual Studio 2012 as well as a
 standalone client. Neither of these prototypes currently work on a full project,
 but that is the eventual goal (along with a MonoDevelop addin).
 
+This is mostly undocumented, hack-filled prototype code. You have been warned.
+
 ## Limitations
 
 - Isolated methods only (no class fields or other methods).
 - There is no visualization for multiple threads.
 - Infinite loop detection is not perfect (false positives, false negatives).
-- Visual Studio extension performs poorly.
+- Visual Studio extension performs poorly (especially when debugging it).
+- Method signatures must be on a single line
 
 For more details on the limitations, see [Instant 0.1](http://ermau.com/instant-0-1/)
 
