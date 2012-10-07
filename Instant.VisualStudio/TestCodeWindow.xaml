@@ -8,7 +8,7 @@
 	
     <Grid>
 		<Grid.RowDefinitions>
-			<RowDefinition Height="100" />
+			<RowDefinition Height="1*" />
 			<RowDefinition Height="Auto" />
 			<RowDefinition Height="Auto" />
 		</Grid.RowDefinitions>
@@ -16,10 +16,7 @@
 		<TextBox Name="code" Grid.Row="0" AcceptsReturn="True" AcceptsTab="True" />
 		
 		<StackPanel Grid.Row="1" Orientation="Horizontal">
-			<Label Target="{Binding ElementName=timeout}">Time_out (ms):</Label>
-			<TextBox Name="timeout" Margin="4" Text="60000" Width="50" />
-			<!--<Label Target="{Binding ElementName=loops}">_Max Loops:</Label>
-			<TextBox Name="loops" Margin="4" Text="{Binding MaximumLoops}" Width="40" />-->
+
 		</StackPanel>
 		
 		<StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right">
