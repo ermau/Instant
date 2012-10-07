@@ -98,12 +98,14 @@ namespace Instant.VisualStudio.ViewModels
 		{
 			base.OnOperationChanged();
 
-			LoopIteration piteration = (this.iterations != null) ? this.iterations[this.iteration - 1] : null;
+			LoopIteration piteration = (this.iterations != null && this.iteration > 0) ? this.iterations[this.iteration - 1] : null;
 			this.iterations = Loop.Operations.OfType<LoopIteration>().ToArray();
 
 			this.iteration = this.iterations.Length;
 			OnPropertyChanged ("Iteration");
-			OnIterationChanged (new IterationChangedEventArgs (piteration, this.iterations[this.iterations.Length - 1]));
+
+			LoopIteration niteration = (this.iterations.Length > 0) ? this.iterations[this.iterations.Length - 1] : null;
+			OnIterationChanged (new IterationChangedEventArgs (piteration, niteration));
 
 			OnPropertyChanged ("TotalIterations");
 			this.adjustIteration.ChangeCanExecute();
