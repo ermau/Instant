@@ -506,7 +506,7 @@ namespace Instant.VisualStudio
 			foreach (var kvp in this.adorners)
 			{
 				Span s = kvp.Key.GetSpan (snapshot);
-				if (!s.Contains (span) || kvp.Value.GetType() != viewType)
+				if (!s.OverlapsWith (span) || kvp.Value.GetType() != viewType)
 					continue;
 
 				tracking = kvp.Key;
