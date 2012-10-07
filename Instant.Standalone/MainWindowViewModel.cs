@@ -101,6 +101,22 @@ namespace Instant.Standalone
 			}
 		}
 
+		public bool IdentTree
+		{
+			get { return this.showIdentTree; }
+			set
+			{
+				if (this.showIdentTree == value)
+					return;
+
+				this.showIdentTree = value;
+				OnPropertyChanged ("IdentTree");
+
+				if (value)
+					ProcessInput();
+			}
+		}
+
 		public bool ShowCompilerErrors
 		{
 			get { return this.showCompilerErrors; }
@@ -114,32 +130,6 @@ namespace Instant.Standalone
 
 				if (value)
 					ProcessInput();
-			}
-		}
-
-		public int MaximumLoops
-		{
-			get { return this.maxLoops; }
-			set
-			{
-				if (this.maxLoops == value)
-					return;
-
-				this.maxLoops = value;
-				OnPropertyChanged ("MaximumLoops");
-			}
-		}
-
-		public int ExecutionTimeout
-		{
-			get { return this.timeout; }
-			set
-			{
-				if (this.timeout == value)
-					return;
-
-				this.timeout = value;
-				OnPropertyChanged ("ExecutionTimeout");
 			}
 		}
 
@@ -169,8 +159,7 @@ namespace Instant.Standalone
 			}
 		}
 
-		private int timeout = 5000, maxLoops = 100;
-		private bool showDebugTree, showCompilerErrors;
+		private bool showDebugTree, showCompilerErrors, showIdentTree;
 		private string input, output, debug = "Initializing";
 
 		private void OnPropertyChanged (string property)
@@ -198,18 +187,8 @@ namespace Instant.Standalone
 				source.Dispose();
 			}
 
-			new Timer (o =>
-			{
-				var cancel = Interlocked.Exchange (ref this.cancelSource, null);
-				if (cancel != null)
-				{
-					cancel.Cancel();
-					cancel.Dispose();
-				}
-			}, null, this.ExecutionTimeout, Timeout.Infinite);
-
-			var sink = new MemoryInstrumentationSink();
-			Submission s = Hook.CreateSubmission (sink, this.cancelSource.Token);
+			var sink = new MemoryInstrumentationSink (newSource.Token);
+			Submission s = Hook.CreateSubmission (sink, newSource.Token);
 			SyntaxNode instrumented = await Instantly.Instrument (input, s);
 			
 			if (DebugTree)

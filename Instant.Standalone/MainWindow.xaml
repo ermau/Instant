@@ -46,23 +46,23 @@
 
 				<Grid.ColumnDefinitions>
 					<ColumnDefinition />
-					<!--<ColumnDefinition />-->
+					<ColumnDefinition Width="Auto" />
+					<ColumnDefinition Width="Auto" />
 				</Grid.ColumnDefinitions>
 				
 				<Standalone:CodeTextBox x:Name="code" Grid.Row="0" Text="{Binding Input,UpdateSourceTrigger=PropertyChanged}" MethodCall="{Binding RootCall}" FontSize="{Binding FontSize}" />
-				<StackPanel Grid.Row="1" Orientation="Horizontal">
-					<Label Target="{Binding ElementName=timeout}">Time_out (ms):</Label>
-					<TextBox Name="timeout" Margin="4" Text="{Binding ExecutionTimeout}" Width="50" />
-					<Label Target="{Binding ElementName=loops}">_Max Loops:</Label>
-					<TextBox Name="loops" Margin="4" Text="{Binding MaximumLoops}" Width="40" />
+				<StackPanel Grid.Row="1" Grid.ColumnSpan="3" Orientation="Horizontal">
 					<CheckBox IsChecked="{Binding DebugTree}">Show _Tree</CheckBox>
+					<CheckBox IsChecked="{Binding IdentTree}">Show _Map</CheckBox>
 					<CheckBox IsChecked="{Binding ShowCompilerErrors}">Show Compiler _Errors</CheckBox>
 					
 					<Label Target="{Binding ElementName=fontSize}">Font Size:</Label>
 					<Slider Name="fontSize" Width="200" Minimum="16" Maximum="100" Value="{Binding FontSize}" />
 				</StackPanel>
-				
-				<!--<TextBox Grid.Column="1" Grid.RowSpan="2" Text="{Binding ElementName=code,Path=IdCode}" FontSize="{Binding FontSize}" />-->
+
+				<GridSplitter Grid.Row="0" Grid.Column="1" Width="3" VerticalAlignment="Stretch" HorizontalAlignment="Center" Visibility="{Binding IdentTree, Converter={StaticResource blnVisibility}}" />
+
+				<TextBox Grid.Column="2" Grid.RowSpan="2" Text="{Binding ElementName=code,Path=IdCode}" FontSize="{Binding FontSize}" Visibility="{Binding IdentTree, Converter={StaticResource blnVisibility}}" />
 			</Grid>
 
 			<GridSplitter Grid.ColumnSpan="3" Grid.Row="1" Height="3" VerticalAlignment="Center" HorizontalAlignment="Stretch" />
