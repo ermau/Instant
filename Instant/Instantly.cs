@@ -34,7 +34,7 @@ namespace Instant
 		/// Instruments the supplied code to call the <see cref="Hook"/> methods.
 		/// </summary>
 		/// <param name="code">The code to instrument.</param>
-		/// <param name="submissionId">The submission ID retrieved from <see cref="Hook.CreateSubmission"/>.</param>
+		/// <param name="submission">The submission retrieved from <see cref="Hook.CreateSubmission"/>.</param>
 		/// <returns>A task for a <see cref="SyntaxNode"/> representing the instrumented code.</returns>
 		/// <seealso cref="Hook.CreateSubmission"/>
 		public static Task<SyntaxNode> Instrument (SyntaxNode code, Submission submission)
@@ -50,7 +50,7 @@ namespace Instant
 		/// Instruments the supplied code to call the <see cref="Hook"/> methods.
 		/// </summary>
 		/// <param name="code">The code to instrument.</param>
-		/// <param name="submissionId">The submission ID retrieved from <see cref="Hook.CreateSubmission"/>.</param>
+		/// <param name="submission">The submission retrieved from <see cref="Hook.CreateSubmission"/>.</param>
 		/// <returns>A task for a <see cref="SyntaxNode"/> representing the instrumented code.</returns>
 		/// <seealso cref="Hook.CreateSubmission"/>
 		public static Task<SyntaxNode> Instrument (string code, Submission submission)
@@ -81,7 +81,7 @@ namespace Instant
 		/// <param name="instrumentedCode"></param>
 		/// <param name="evalSource"></param>
 		/// <returns>A task for a dictionary of managed thread IDs to <see cref="MethodCall"/>s.</returns>
-		/// <seealso cref="Instrument(string,int)"/>
+		/// <seealso cref="Instrument(string,Instant.Submission)"/>
 		public static Task Evaluate (SyntaxNode instrumentedCode, string evalSource)
 		{
 			if (instrumentedCode == null)
