@@ -16,15 +16,15 @@
 // limitations under the License.
 
 using System;
+using System.CodeDom.Compiler;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
+using ICSharpCode.NRefactory.CSharp;
 using Instant.Operations;
-using Roslyn.Compilers;
-using Roslyn.Compilers.CSharp;
-using Roslyn.Scripting;
-using Roslyn.Scripting.CSharp;
+using Microsoft.CSharp;
 
 namespace Instant
 {
@@ -35,44 +35,22 @@ namespace Instant
 		/// </summary>
 		/// <param name="code">The code to instrument.</param>
 		/// <param name="submission">The submission retrieved from <see cref="Hook.CreateSubmission"/>.</param>
-		/// <returns>A task for a <see cref="SyntaxNode"/> representing the instrumented code.</returns>
+		/// <returns>A task for a <see cref="string"/> representing the instrumented code.</returns>
 		/// <seealso cref="Hook.CreateSubmission"/>
-		public static Task<SyntaxNode> Instrument (SyntaxNode code, Submission submission)
+		public static Task<string> Instrument (string code, Submission submission)
 		{
 			if (code == null)
 				throw new ArgumentNullException ("code");
 
-			return Task<SyntaxNode>.Factory.StartNew (s =>
-				InstrumentCore ((SyntaxNode)s, submission), code);
-		}
-
-		/// <summary>
-		/// Instruments the supplied code to call the <see cref="Hook"/> methods.
-		/// </summary>
-		/// <param name="code">The code to instrument.</param>
-		/// <param name="submission">The submission retrieved from <see cref="Hook.CreateSubmission"/>.</param>
-		/// <returns>A task for a <see cref="SyntaxNode"/> representing the instrumented code.</returns>
-		/// <seealso cref="Hook.CreateSubmission"/>
-		public static Task<SyntaxNode> Instrument (string code, Submission submission)
-		{
-			if (code == null)
-				throw new ArgumentNullException ("code");
-
-			return Task<SyntaxNode>.Factory.StartNew (s =>
+			return Task<string>.Factory.StartNew (s =>
 			{
-				SyntaxTree tree = SyntaxTree.ParseText ((string)s, cancellationToken: submission.CancelToken);
-				SyntaxNode node = tree.GetRoot (submission.CancelToken);
+				SyntaxTree tree = SyntaxTree.Parse ((string)s, cancellationToken: submission.CancelToken);
 
-				return InstrumentCore (node, submission);
+				InstrumentingRewriter rewriter = new InstrumentingRewriter (submission);
+				tree.AcceptVisitor (rewriter);
+
+				return tree.GetText();
 			}, code);
-		}
-
-		private static SyntaxNode InstrumentCore (SyntaxNode root, Submission submission)
-		{
-			if (root.GetDiagnostics().Any (d => d.Info.Severity == DiagnosticSeverity.Warning))
-				return null;
-
-			return new LoggingRewriter (submission).Visit (root);
 		}
 
 		/// <summary>
@@ -82,7 +60,7 @@ namespace Instant
 		/// <param name="evalSource"></param>
 		/// <returns>A task for a dictionary of managed thread IDs to <see cref="MethodCall"/>s.</returns>
 		/// <seealso cref="Instrument(string,Instant.Submission)"/>
-		public static Task Evaluate (SyntaxNode instrumentedCode, string evalSource)
+		public static Task Evaluate (string instrumentedCode, string evalSource)
 		{
 			if (instrumentedCode == null)
 				throw new ArgumentNullException ("instrumentedCode");
@@ -91,34 +69,24 @@ namespace Instant
 
 			return Task.Factory.StartNew (() =>
 			{
-				// Eventually when we support full projects, we can pull these
-				// directly from the project. Until then, general basics.
-				ScriptEngine engine = new ScriptEngine();
-				engine.AddReference (typeof (string).Assembly); // mscorlib
-				engine.AddReference (typeof (System.Diagnostics.Stopwatch).Assembly); // System.dll
-				engine.AddReference (typeof (Enumerable).Assembly); // System.Core
-				engine.AddReference (typeof (Hook).Assembly); // Instant.dll
+				var cparams = new CompilerParameters();
+				cparams.GenerateInMemory = true;
+				cparams.IncludeDebugInformation = false;
+				cparams.ReferencedAssemblies.Add (typeof (string).Assembly.Location); // mscorlib
+				cparams.ReferencedAssemblies.Add (typeof (System.Diagnostics.Stopwatch).Assembly.Location); // System.dll
+				cparams.ReferencedAssemblies.Add (typeof (Enumerable).Assembly.Location); // System.Core
+				cparams.ReferencedAssemblies.Add (typeof (Hook).Assembly.Location);
 
-				engine.ImportNamespace ("System");
-				engine.ImportNamespace ("System.Linq");
-				engine.ImportNamespace ("System.Collections.Generic");
-				engine.ImportNamespace ("System.Diagnostics");
+				// HACK: Wrap test code into a proper method
+				evalSource = "namespace Instant.User { static class Evaluation { static void Evaluate() {" + evalSource + " } } }";
 
-				try
-				{
-					Session session = engine.CreateSession();
-					session.Execute (instrumentedCode.ToString());
-					session.Execute (evalSource);
-				}
-				catch (CompilationErrorException)
-				{
-				}
-				catch (OutOfMemoryException)
-				{
-				}
-				catch (OperationCanceledException)
-				{ // We can still potentially display results up to the cancellation
-				}
+				CSharpCodeProvider provider = new CSharpCodeProvider();
+				CompilerResults results = provider.CompileAssemblyFromSource (cparams, instrumentedCode, evalSource);
+				if (results.Errors.Count > 0)
+					return;
+
+				MethodInfo method = results.CompiledAssembly.GetType ("Instant.User.Evaluation").GetMethod ("Evaluate", BindingFlags.NonPublic | BindingFlags.Static);
+				method.Invoke (null, null);
 			});
 		}
 
@@ -134,7 +102,7 @@ namespace Instant
 			var sink = new MemoryInstrumentationSink();
 			Submission submission = Hook.CreateSubmission (sink, cancelToken);
 			
-			SyntaxNode instrumented = await Instrument (code, submission).ConfigureAwait (false);
+			string instrumented = await Instrument (code, submission).ConfigureAwait (false);
 			if (instrumented == null)
 				return null;
 

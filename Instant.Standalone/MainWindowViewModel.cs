@@ -189,14 +189,18 @@ namespace Instant.Standalone
 
 			var sink = new MemoryInstrumentationSink (newSource.Token);
 			Submission s = Hook.CreateSubmission (sink, newSource.Token);
-			SyntaxNode instrumented = await Instantly.Instrument (input, s);
+			string instrumented = await Instantly.Instrument (input, s);
 			
-			if (DebugTree)
-				LogSyntaxTree (instrumented);
+			//if (DebugTree)
+			//	LogSyntaxTree (instrumented);
+
+			// HACK: Prototype has no way of identifying methods in a normal environment,
+			// previous method was achieved through ScriptEngine.
+			string testCode = "var foo = new Test.Foo(); foo.DoStuff();";
 
 			try
 			{
-				await Instantly.Evaluate (instrumented, String.Empty);
+				await Instantly.Evaluate (instrumented, testCode);
 				
 				var methods = sink.GetRootCalls();
 				if (methods == null || methods.Count == 0)
