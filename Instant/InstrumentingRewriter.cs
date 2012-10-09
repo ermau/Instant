@@ -125,6 +125,16 @@ namespace Instant
 			}
 		}
 
+		public override void VisitReturnStatement (ReturnStatement returnStatement)
+		{
+			base.VisitReturnStatement (returnStatement);
+
+			if (returnStatement.Expression == Expression.Null)
+				return;
+
+			returnStatement.Expression = GetHookExpression ("LogReturn", GetSubmissionId(), GetId(), returnStatement.Expression.Clone());
+		}
+
 		private readonly Submission submission;
 		private int id;
 
