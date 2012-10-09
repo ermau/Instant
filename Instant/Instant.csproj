@@ -72,7 +72,6 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Extensions.cs" />
-    <Compile Include="FixingRewriter.cs" />
     <Compile Include="Hook.cs" />
     <Compile Include="IdentifyingVisitor.cs" />
     <Compile Include="IInstrumentationSink.cs" />
