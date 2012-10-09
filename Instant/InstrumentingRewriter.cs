@@ -126,6 +126,32 @@ namespace Instant
 			}
 		}
 
+		public override void VisitUnaryOperatorExpression (UnaryOperatorExpression unary)
+		{
+			base.VisitUnaryOperatorExpression (unary);
+
+			Identifier identifier = FindIdentifier (unary);
+			if (identifier == null)
+				return;
+
+			switch (unary.Operator)
+			{
+				case UnaryOperatorType.Increment:
+				case UnaryOperatorType.Decrement:
+					unary.ReplaceWith (GetAssignmentExpression (identifier, unary));
+					break;
+
+				case UnaryOperatorType.PostDecrement:
+				case UnaryOperatorType.PostIncrement:
+
+					var variable = new IdentifierExpression (identifier.Name);
+					var name = new PrimitiveExpression (identifier.Name);
+
+					unary.ReplaceWith (GetHookExpression ("LogPostfix", GetSubmissionId(), GetId(), unary.Clone(), name, variable));
+					break;
+			}
+		}
+
 		public override void VisitReturnStatement (ReturnStatement returnStatement)
 		{
 			base.VisitReturnStatement (returnStatement);
