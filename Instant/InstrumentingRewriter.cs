@@ -269,6 +269,10 @@ namespace Instant
 			if (assignment != null)
 				return FindIdentifier (assignment.Left);
 
+			var unary = node as UnaryOperatorExpression;
+			if (unary != null)
+				return FindIdentifier (unary.Expression);
+
 			return null;
 		}
 
