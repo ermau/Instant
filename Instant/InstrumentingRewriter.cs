@@ -128,6 +128,16 @@ namespace Instant
 		private readonly Submission submission;
 		private int id;
 
+		private PrimitiveExpression GetSubmissionId()
+		{
+			return new PrimitiveExpression (this.submission.SubmissionId);
+		}
+
+		private PrimitiveExpression GetId()
+		{
+			return new PrimitiveExpression (this.id++);
+		}
+
 		private Identifier FindIdentifier (AstNode node)
 		{
 			var ident = node as IdentifierExpression;
@@ -161,8 +171,8 @@ namespace Instant
 		private Expression GetAssignmentExpression (Identifier identifier, Expression expression)
 		{
 			return GetHookExpression ("LogObject",
-				new PrimitiveExpression (this.submission.SubmissionId),
-				new PrimitiveExpression (this.id++),
+				GetSubmissionId(),
+				GetId(),
 				new PrimitiveExpression (identifier.Name),
 				expression.Clone()
 			);
