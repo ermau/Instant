@@ -15,13 +15,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System;
 using System.Collections.Generic;
+using ICSharpCode.NRefactory.CSharp;
 using Roslyn.Compilers.CSharp;
 
 namespace Instant
 {
 	public static class Extensions
 	{
+		public static void InsertBefore (this BlockStatement self, AstNode nextSibling, Expression expression)
+		{
+			if (self == null)
+				throw new ArgumentNullException ("self");
+			if (nextSibling == null)
+				throw new ArgumentNullException ("nextSibling");
+			if (expression == null)
+				throw new ArgumentNullException ("expression");
+
+			self.InsertChildBefore (nextSibling, new ExpressionStatement (expression), BlockStatement.StatementRole);
+		}
+
 		public static string FindIdentifierName (this ExpressionSyntax expression)
 		{
 			IdentifierNameSyntax name = expression as IdentifierNameSyntax;
