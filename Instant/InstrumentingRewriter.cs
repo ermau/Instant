@@ -206,6 +206,16 @@ namespace Instant
 			this.loopLevel--;
 		}
 
+		public override void VisitIfElseStatement (IfElseStatement ifElseStatement)
+		{
+			if (!(ifElseStatement.TrueStatement is BlockStatement))
+				ifElseStatement.TrueStatement = new BlockStatement { ifElseStatement.TrueStatement.Clone() };
+			if (!(ifElseStatement.FalseStatement is BlockStatement) && !(ifElseStatement.FalseStatement is IfElseStatement))
+				ifElseStatement.FalseStatement = new BlockStatement { ifElseStatement.FalseStatement.Clone() };
+
+			base.VisitIfElseStatement (ifElseStatement);
+		}
+
 		public override void VisitBlockStatement (BlockStatement blockStatement)
 		{
 			base.VisitBlockStatement (blockStatement);
