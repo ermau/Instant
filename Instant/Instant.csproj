@@ -80,7 +80,6 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="InstrumentingRewriter.cs" />
-    <Compile Include="LoggingRewriter.cs" />
     <Compile Include="MemoryInstrumentationSink.cs" />
     <Compile Include="Operations\Loop.cs" />
     <Compile Include="Operations\LoopIteration.cs" />
