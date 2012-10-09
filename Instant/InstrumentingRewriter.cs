@@ -16,6 +16,7 @@
 // limitations under the License.
 
 using System;
+using System.Collections.Generic;
 using ICSharpCode.NRefactory;
 using ICSharpCode.NRefactory.CSharp;
 
@@ -135,8 +136,109 @@ namespace Instant
 			returnStatement.Expression = GetHookExpression ("LogReturn", GetSubmissionId(), GetId(), returnStatement.Expression.Clone());
 		}
 
+		public override void VisitForStatement (ForStatement forStatement)
+		{
+			this.loopLevel++;
+
+			forStatement.EmbeddedStatement = GetLoopBlock (forStatement.EmbeddedStatement);
+
+			base.VisitForStatement (forStatement);
+
+			this.loopLevel--;
+		}
+
+		public override void VisitForeachStatement (ForeachStatement foreachStatement)
+		{
+			this.loopLevel++;
+
+			foreachStatement.EmbeddedStatement = GetLoopBlock (foreachStatement.EmbeddedStatement);
+
+			base.VisitForeachStatement (foreachStatement);
+
+			this.loopLevel--;
+		}
+
+		public override void VisitWhileStatement (WhileStatement whileStatement)
+		{
+			this.loopLevel++;
+
+			whileStatement.EmbeddedStatement = GetLoopBlock (whileStatement.EmbeddedStatement);
+
+			base.VisitWhileStatement (whileStatement);
+
+			this.loopLevel--;
+		}
+
+		public override void VisitDoWhileStatement (DoWhileStatement doWhileStatement)
+		{
+			this.loopLevel++;
+
+			doWhileStatement.EmbeddedStatement = GetLoopBlock (doWhileStatement.EmbeddedStatement);
+
+			base.VisitDoWhileStatement (doWhileStatement);
+
+			this.loopLevel--;
+		}
+
+		public override void VisitBlockStatement (BlockStatement blockStatement)
+		{
+			base.VisitBlockStatement (blockStatement);
+
+			List<Statement> statements = new List<Statement>();
+
+			foreach (Statement statement in blockStatement.Statements)
+			{
+				bool loop = GetIsLoopStatement (statement);
+				if (loop)
+					statements.Add (new ExpressionStatement (GetHookExpression ("BeginLoop", GetSubmissionId(), GetId (this.blockIds.Dequeue()))));
+
+				if (this.loopLevel > 0)
+				{
+					if (statement is ContinueStatement || statement is BreakStatement)
+						statements.Add (new ExpressionStatement (GetHookExpression ("EndInsideLoop", GetSubmissionId(), GetId())));
+				}
+
+				statements.Add (statement.Clone());
+
+				if (loop)
+					statements.Add (new ExpressionStatement (GetHookExpression ("EndLoop", GetSubmissionId(), GetId())));
+			}
+
+			blockStatement.Statements.Clear();
+			blockStatement.Statements.AddRange (statements);
+		}
+
 		private readonly Submission submission;
 		private int id;
+		private int loopLevel;
+		private readonly Queue<int> blockIds = new Queue<int>();
+
+		private bool GetIsLoopStatement (Statement statement)
+		{
+			return	statement is ForStatement
+					|| statement is ForeachStatement
+					|| statement is WhileStatement
+					|| statement is DoWhileStatement;
+		}
+
+		private Statement GetLoopBlock (Statement statement)
+		{
+			this.blockIds.Enqueue (this.id++);
+
+			BlockStatement block = statement as BlockStatement;
+			if (block == null)
+			{
+				if (statement == Statement.Null)
+					block = new BlockStatement();
+				else
+					block = new BlockStatement { statement.Clone() };
+			}
+
+			block.InsertBefore (block.FirstChild, GetHookExpression ("BeginInsideLoop", GetSubmissionId(), GetId()));
+			block.Add (GetHookExpression ("EndInsideLoop", GetSubmissionId(), GetId()));
+
+			return block;
+		}
 
 		private PrimitiveExpression GetSubmissionId()
 		{
@@ -145,7 +247,12 @@ namespace Instant
 
 		private PrimitiveExpression GetId()
 		{
-			return new PrimitiveExpression (this.id++);
+			return GetId (this.id++);
+		}
+
+		private PrimitiveExpression GetId (int nodeId)
+		{
+			return new PrimitiveExpression (nodeId);
 		}
 
 		private Identifier FindIdentifier (AstNode node)
