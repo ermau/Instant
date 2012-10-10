@@ -18,8 +18,6 @@
 using System;
 using System.Collections.Generic;
 using ICSharpCode.NRefactory.CSharp;
-using Roslyn.Compilers.CSharp;
-
 namespace Instant
 {
 	public static class Extensions
@@ -36,48 +34,25 @@ namespace Instant
 			self.InsertChildBefore (nextSibling, new ExpressionStatement (expression), BlockStatement.StatementRole);
 		}
 
-		public static string FindIdentifierName (this ExpressionSyntax expression)
+		public static Identifier FindIdentifier (this AstNode node)
 		{
-			IdentifierNameSyntax name = expression as IdentifierNameSyntax;
-			if (name != null)
-				return name.Identifier.ValueText;
+			var ident = node as IdentifierExpression;
+			if (ident != null)
+				return ident.IdentifierToken;
 
-			BinaryExpressionSyntax binaryExpression = expression as BinaryExpressionSyntax;
-			if (binaryExpression != null)
-				return FindIdentifierName (binaryExpression.Right);
+			var init = node as VariableInitializer;
+			if (init != null)
+				return init.NameToken;
 
-			PostfixUnaryExpressionSyntax postfixUnaryExpression = expression as PostfixUnaryExpressionSyntax;
-			if (postfixUnaryExpression != null)
-				return FindIdentifierName (postfixUnaryExpression.Operand);
+			var assignment = node as AssignmentExpression;
+			if (assignment != null)
+				return FindIdentifier (assignment.Left);
 
-			PrefixUnaryExpressionSyntax prefixUnaryExpression = expression as PrefixUnaryExpressionSyntax;
-			if (prefixUnaryExpression != null)
-				return FindIdentifierName (prefixUnaryExpression.Operand);
+			var unary = node as UnaryOperatorExpression;
+			if (unary != null)
+				return FindIdentifier (unary.Expression);
 
-			MemberAccessExpressionSyntax memberAccessExpression = expression as MemberAccessExpressionSyntax;
-			if (memberAccessExpression != null)
-				return memberAccessExpression.ToString();
-			
 			return null;
-		}
-
-		public static IEnumerable<SyntaxTrivia> InsertComment (this IEnumerable<SyntaxTrivia> self, SyntaxTrivia insert)
-		{
-			bool yielded = false;
-
-			foreach (SyntaxTrivia trivia in self)
-			{
-				yield return trivia;
-
-				if (trivia.Kind == SyntaxKind.EndOfLineTrivia)
-				{
-					yield return insert;
-					yielded = true;
-				}
-			}
-
-			if (!yielded)
-				yield return insert;
 		}
 
 		public static IEnumerable<T> Concat<T> (this IEnumerable<T> self, T concated)
