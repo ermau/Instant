@@ -53,7 +53,7 @@ namespace Instant
 		{
 			base.VisitVariableInitializer (initializer);
 
-			Identifier identifier = FindIdentifier (initializer);
+			Identifier identifier = initializer.FindIdentifier();
 			if (identifier == null)
 				return;
 
@@ -94,7 +94,7 @@ namespace Instant
 		{
 			base.VisitAssignmentExpression (expression);
 
-			Identifier identifier = FindIdentifier (expression);
+			Identifier identifier = expression.FindIdentifier();
 			if (identifier == null)
 				return;
 
@@ -130,7 +130,7 @@ namespace Instant
 		{
 			base.VisitUnaryOperatorExpression (unary);
 
-			Identifier identifier = FindIdentifier (unary);
+			Identifier identifier = unary.FindIdentifier();
 			if (identifier == null)
 				return;
 
@@ -289,27 +289,6 @@ namespace Instant
 		private PrimitiveExpression GetId (int nodeId)
 		{
 			return new PrimitiveExpression (nodeId);
-		}
-
-		private Identifier FindIdentifier (AstNode node)
-		{
-			var ident = node as IdentifierExpression;
-			if (ident != null)
-				return ident.IdentifierToken;
-
-			var init = node as VariableInitializer;
-			if (init != null)
-				return init.NameToken;
-
-			var assignment = node as AssignmentExpression;
-			if (assignment != null)
-				return FindIdentifier (assignment.Left);
-
-			var unary = node as UnaryOperatorExpression;
-			if (unary != null)
-				return FindIdentifier (unary.Expression);
-
-			return null;
 		}
 
 		private Expression GetHookExpression (string method, params Expression[] parameters)
