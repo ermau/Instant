@@ -6,7 +6,7 @@
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-
+//
 //     http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
@@ -15,216 +15,210 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System;
 using System.Collections.Generic;
-using Roslyn.Compilers;
-using Roslyn.Compilers.CSharp;
+using ICSharpCode.NRefactory.CSharp;
 
 namespace Instant
 {
 	public class IdentifyingVisitor
-		: SyntaxRewriter
+		: DepthFirstAstVisitor
 	{
-		public override SyntaxNode VisitVariableDeclarator (VariableDeclaratorSyntax node)
+		public IDictionary<int, int> LineMap
 		{
-			var based = base.VisitVariableDeclarator (node);
-			if (node.Initializer == null)
-				return based;
-
-			return based.WithTrailingTrivia (based.GetTrailingTrivia().Prepend (GetIdComment()));
+			get { return this.lineMap; }
 		}
 
-		private bool visitedMethod;
-		public override SyntaxNode VisitMethodDeclaration (MethodDeclarationSyntax node)
+		public override void VisitMethodDeclaration (MethodDeclaration methodDeclaration)
 		{
-			if (this.visitedMethod)
-				return node;
+			base.VisitMethodDeclaration (methodDeclaration);
 
-			this.visitedMethod = true;
+			var body = methodDeclaration.Body;
+			if (!body.HasChildren)
+				return;
 
-			var based = base.VisitMethodDeclaration (node);
-
-			SyntaxTrivia methodComment = GetIdComment();
-
-			this.id += node.ParameterList.Parameters.Count;
-
-			return based.WithLeadingTrivia (based.GetLeadingTrivia().Prepend (methodComment));
+			this.lineMap[this.id++] = methodDeclaration.StartLocation.Line;
 		}
 
-		public override SyntaxNode VisitPostfixUnaryExpression (PostfixUnaryExpressionSyntax node)
+		public override void VisitVariableInitializer (VariableInitializer initializer)
 		{
-			var based = base.VisitPostfixUnaryExpression (node);
+			base.VisitVariableInitializer (initializer);
 
-			switch (node.Kind)
+			Identifier identifier = initializer.FindIdentifier();
+			if (identifier == null)
+				return;
+
+			this.lineMap[this.id++] = initializer.StartLocation.Line;
+		}
+
+		private BinaryOperatorType GetComplexAssignOperator (AssignmentOperatorType type)
+		{
+			switch (type)
 			{
-				case SyntaxKind.PostIncrementExpression:
-				case SyntaxKind.PostDecrementExpression:
-					return based.WithTrailingTrivia (based.GetTrailingTrivia().Prepend (GetIdComment()));
+				case AssignmentOperatorType.BitwiseOr:
+					return BinaryOperatorType.BitwiseOr;
+				case AssignmentOperatorType.BitwiseAnd:
+					return BinaryOperatorType.BitwiseAnd;
+				case AssignmentOperatorType.ExclusiveOr:
+					return BinaryOperatorType.ExclusiveOr;
+				case AssignmentOperatorType.Add:
+					return BinaryOperatorType.Add;
+				case AssignmentOperatorType.Subtract:
+					return BinaryOperatorType.Subtract;
+				case AssignmentOperatorType.Divide:
+					return BinaryOperatorType.Divide;
+				case AssignmentOperatorType.Modulus:
+					return BinaryOperatorType.Modulus;
+				case AssignmentOperatorType.Multiply:
+					return BinaryOperatorType.Multiply;
+				case AssignmentOperatorType.ShiftLeft:
+					return BinaryOperatorType.ShiftLeft;
+				case AssignmentOperatorType.ShiftRight:
+					return BinaryOperatorType.ShiftRight;
 
 				default:
-					return based;
+					throw new ArgumentException();
 			}
 		}
 
-		public override SyntaxNode VisitPrefixUnaryExpression (PrefixUnaryExpressionSyntax node)
+		public override void VisitAssignmentExpression (AssignmentExpression expression)
 		{
-			var based = base.VisitPrefixUnaryExpression (node);
-			switch (node.Kind)
-			{
-				case SyntaxKind.PreIncrementExpression:
-				case SyntaxKind.PreDecrementExpression:
-					return based.WithTrailingTrivia (based.GetTrailingTrivia().Prepend (GetIdComment()));
+			base.VisitAssignmentExpression (expression);
 
-				default:
-					return based;
+			Identifier identifier = expression.FindIdentifier();
+			if (identifier == null)
+				return;
+
+			switch (expression.Operator)
+			{
+				case AssignmentOperatorType.BitwiseOr:
+				case AssignmentOperatorType.BitwiseAnd:
+				case AssignmentOperatorType.ExclusiveOr:
+				case AssignmentOperatorType.Add:
+				case AssignmentOperatorType.Subtract:
+				case AssignmentOperatorType.Divide:
+				case AssignmentOperatorType.Modulus:
+				case AssignmentOperatorType.Multiply:
+				case AssignmentOperatorType.ShiftLeft:
+				case AssignmentOperatorType.ShiftRight:
+				case AssignmentOperatorType.Assign:
+					this.lineMap[this.id++] = expression.StartLocation.Line;
+					break;
 			}
 		}
 
-		public override SyntaxNode VisitReturnStatement (ReturnStatementSyntax node)
+		public override void VisitUnaryOperatorExpression (UnaryOperatorExpression unary)
 		{
-			var based = base.VisitReturnStatement (node);
-			based = based.WithTrailingTrivia (based.GetTrailingTrivia().Prepend (GetIdComment()));
-			return based;
-		}
+			base.VisitUnaryOperatorExpression (unary);
 
-		public override SyntaxNode VisitBinaryExpression (BinaryExpressionSyntax node)
-		{
-			var based = base.VisitBinaryExpression (node);
+			Identifier identifier = unary.FindIdentifier();
+			if (identifier == null)
+				return;
 
-			if (node.Left.FindIdentifierName() == null)
-				return node;
-
-			switch (node.Kind)
+			switch (unary.Operator)
 			{
-				case SyntaxKind.AddAssignExpression:
-				case SyntaxKind.OrAssignExpression:
-				case SyntaxKind.SubtractAssignExpression:
-				case SyntaxKind.MultiplyAssignExpression:
-				case SyntaxKind.DivideAssignExpression:
-				case SyntaxKind.ModuloAssignExpression:
-				case SyntaxKind.RightShiftAssignExpression:
-				case SyntaxKind.LeftShiftAssignExpression:
-				case SyntaxKind.AndAssignExpression:
-				case SyntaxKind.ExclusiveOrAssignExpression:
-				case SyntaxKind.AssignExpression:
-					return based.WithTrailingTrivia (based.GetTrailingTrivia().Prepend (GetIdComment()));
-
-				default:
-					return node;
+				case UnaryOperatorType.Increment:
+				case UnaryOperatorType.Decrement:
+				case UnaryOperatorType.PostDecrement:
+				case UnaryOperatorType.PostIncrement:
+					this.lineMap[this.id++] = unary.StartLocation.Line;
+					break;
 			}
 		}
 
-		public override SyntaxNode VisitBlock (BlockSyntax node)
+		public override void VisitReturnStatement (ReturnStatement returnStatement)
 		{
-			var results = base.VisitBlock (node);
-			if ((node = results as BlockSyntax) == null)
-				return results;
+			base.VisitReturnStatement (returnStatement);
 
-			var list = new List<StatementSyntax>();
-			foreach (StatementSyntax statement in node.Statements)
+			if (returnStatement.Expression == Expression.Null)
+				return;
+
+			int nodeId = this.id++;
+			this.lineMap[nodeId] = returnStatement.StartLocation.Line;
+		}
+
+		public override void VisitForStatement (ForStatement forStatement)
+		{
+			this.loopLevel++;
+			base.VisitForStatement (forStatement);
+			this.loopLevel--;
+		}
+
+		public override void VisitForeachStatement (ForeachStatement foreachStatement)
+		{
+			this.loopLevel++;
+			base.VisitForeachStatement (foreachStatement);
+			this.loopLevel--;
+		}
+
+		public override void VisitWhileStatement (WhileStatement whileStatement)
+		{
+			this.loopLevel++;
+			base.VisitWhileStatement (whileStatement);
+			this.loopLevel--;
+		}
+
+		public override void VisitDoWhileStatement (DoWhileStatement doWhileStatement)
+		{
+			this.loopLevel++;
+			base.VisitDoWhileStatement (doWhileStatement);
+			this.loopLevel--;
+		}
+
+		public override void VisitIfElseStatement (IfElseStatement ifElseStatement)
+		{
+			if (!(ifElseStatement.TrueStatement is BlockStatement))
+				ifElseStatement.TrueStatement = new BlockStatement { ifElseStatement.TrueStatement.Clone() };
+			if (!(ifElseStatement.FalseStatement is BlockStatement) && !(ifElseStatement.FalseStatement is IfElseStatement))
+				ifElseStatement.FalseStatement = new BlockStatement { ifElseStatement.FalseStatement.Clone() };
+
+			base.VisitIfElseStatement (ifElseStatement);
+		}
+
+		public override void VisitBlockStatement (BlockStatement blockStatement)
+		{
+			base.VisitBlockStatement (blockStatement);
+
+			List<Statement> statements = new List<Statement>();
+
+			foreach (Statement statement in blockStatement.Statements)
 			{
-				var s = statement;
-				
-				bool loop = s.HasAnnotation (this.isLoop);
+				bool loop = GetIsLoopStatement (statement);
 				if (loop)
-					s = s.WithLeadingTrivia (s.GetLeadingTrivia().InsertComment (GetIdComment (this.blockIds.Dequeue())));
+				{
+					int nodeId = this.blockIds.Dequeue();
+					this.lineMap[nodeId] = statement.StartLocation.Line;
+				}
 
 				if (this.loopLevel > 0)
 				{
-					if (s is ContinueStatementSyntax || s is BreakStatementSyntax)
-						s = s.WithTrailingTrivia (s.GetTrailingTrivia().Prepend (GetIdComment()));
+					if (statement is ContinueStatement || statement is BreakStatement)
+						this.id++;
 				}
 
-				list.Add (s);
+				statements.Add (statement.Clone());
 
 				if (loop)
 					this.id++;
-				//if (loop)
-				//	s = s.WithTrailingTrivia (s.GetTrailingTrivia().Prepend (GetIdComment()));
 			}
 
-			return node.WithStatements (Syntax.List<StatementSyntax> (list));
+			blockStatement.Statements.Clear();
+			blockStatement.Statements.AddRange (statements);
 		}
 
-		public override SyntaxNode VisitWhileStatement (WhileStatementSyntax node)
+		
+
+		protected int id;
+		protected int loopLevel;
+		protected readonly Queue<int> blockIds = new Queue<int>();
+		protected readonly Dictionary<int, int> lineMap = new Dictionary<int, int>();
+		
+		private bool GetIsLoopStatement (Statement statement)
 		{
-			this.loopLevel++;
-
-			var statement = base.VisitWhileStatement (node
-								.WithStatement (GetLoopBlock (node.Statement)))
-							.WithAdditionalAnnotations (this.isLoop);
-
-			this.loopLevel--;
-
-			return statement;
-		}
-
-		public override SyntaxNode VisitForEachStatement (ForEachStatementSyntax node)
-		{
-			this.loopLevel++;
-
-			var statement = base.VisitForEachStatement (node
-								.WithStatement (GetLoopBlock (node.Statement)))
-							.WithAdditionalAnnotations (this.isLoop);
-
-			this.loopLevel--;
-
-			return statement;
-		}
-
-		public override SyntaxNode VisitForStatement (ForStatementSyntax node)
-		{
-			this.loopLevel++;
-
-			var statement = base.VisitForStatement (node
-								.WithStatement (GetLoopBlock (node.Statement)))
-							.WithAdditionalAnnotations (this.isLoop);
-
-			this.loopLevel--;
-
-			return statement;
-		}
-
-		public override SyntaxNode VisitDoStatement (DoStatementSyntax node)
-		{
-			this.loopLevel++;
-
-			var statement = base.VisitDoStatement (node
-								.WithStatement (GetLoopBlock (node.Statement)))
-							.WithAdditionalAnnotations (this.isLoop);
-
-			this.loopLevel--;
-
-			return statement;
-		}
-
-		private int id, loopLevel;
-		private readonly Queue<int> blockIds = new Queue<int>();
-		private readonly SyntaxAnnotation isLoop = new SyntaxAnnotation();
-
-		private string GetIdCommentString (int cid)
-		{
-			return "/*_" + cid + "_*/";
-		}
-
-		private SyntaxTrivia GetIdComment()
-		{
-			return GetIdComment (this.id++);
-		}	
-
-		private SyntaxTrivia GetIdComment (int cid)
-		{
-			return Syntax.Comment (GetIdCommentString (cid));
-		}
-
-		private BlockSyntax GetLoopBlock (StatementSyntax statement)
-		{
-			this.blockIds.Enqueue (this.id++);
-			this.id += 2;
-
-			if (statement is BlockSyntax)
-				return (BlockSyntax)statement;
-			
-			return Syntax.Block (Syntax.List (statement));
+			return	statement is ForStatement
+					|| statement is ForeachStatement
+					|| statement is WhileStatement
+					|| statement is DoWhileStatement;
 		}
 	}
 }
