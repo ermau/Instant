@@ -24,9 +24,9 @@ using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
+using ICSharpCode.NRefactory.CSharp;
 using Instant.Operations;
 using Instant.Standalone.Adorners;
-using Roslyn.Compilers.CSharp;
 
 namespace Instant.Standalone
 {
@@ -82,30 +82,10 @@ namespace Instant.Standalone
 
 			this.updating = true;
 
-			SyntaxNode root = Syntax.ParseCompilationUnit (Text);
-			//root = new FixingRewriter().Visit (root);
-			var ided = new IdentifyingVisitor().Visit (root);
-			this.IdCode = ided.ToString();
+			var identifier = new IdentifyingVisitor();
+			SyntaxTree tree = SyntaxTree.Parse (Text);
+			tree.AcceptVisitor (identifier);
 
-			Dictionary<int, int> lineMap = new Dictionary<int, int>();
-
-			string line;
-			int ln = 0;
-			StringReader reader = new StringReader (ided.ToString());					
-			while ((line = reader.ReadLine()) != null)
-			{
-				MatchCollection matches = IdRegex.Matches (line);
-				foreach (Match match in matches)
-				{
-					int id;
-					if (!Int32.TryParse (match.Groups [1].Value, out id))
-						continue;
-
-					lineMap [id] = ln;
-				}
-
-				ln++;
-			}
 
 			var layer = AdornerLayer.GetAdornerLayer (this);
 			foreach (Adorner adorner in this.adorners.Values)
@@ -113,8 +93,8 @@ namespace Instant.Standalone
 
 			this.adorners.Clear();
 
-			if (lineMap.Count > 0)
-				AdornOperationContainer (this.MethodCall, lineMap, layer);
+			if (identifier.LineMap.Count > 0)
+				AdornOperationContainer (this.MethodCall, identifier.LineMap, layer);
 
 			this.updating = false;
 		}
@@ -134,7 +114,8 @@ namespace Instant.Standalone
 				int ln;
 				if (!lineMap.TryGetValue (operation.Id, out ln))
 					continue;
-				//int ln = lineMap [operation.Id];
+
+				ln -= 1;
 
 				int ch = GetCharacterIndexFromLineIndex (ln);
 				int len = GetLineLength (ln);
