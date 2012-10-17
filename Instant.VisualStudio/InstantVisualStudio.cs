@@ -352,32 +352,11 @@ namespace Instant.VisualStudio
 
 		private Dictionary<int, ITextSnapshotLine> ConstructLineMap (ITextSnapshot snapshot, CancellationToken cancelToken, string code)
 		{
-			SyntaxNode root = SyntaxTree.ParseText (code, cancellationToken: cancelToken).GetRoot (cancelToken);
-			//root = new FixingRewriter().Visit (root);
-			var ided = new IdentifyingVisitor().Visit (root);
+			var tree = ICSharpCode.NRefactory.CSharp.SyntaxTree.Parse (code, cancellationToken: cancelToken);
+			var identifier = new IdentifyingVisitor();
+			tree.AcceptVisitor (identifier);
 
-			var lineMap = new Dictionary<int, ITextSnapshotLine>();
-
-			string line;
-			int ln = snapshot.GetLineNumberFromPosition (this.context.Span.GetStartPoint (this.view.TextSnapshot));
-			StringReader reader = new StringReader (ided.ToString());
-			while ((line = reader.ReadLine()) != null)
-			{
-				MatchCollection matches = IdRegex.Matches (line);
-				foreach (Match match in matches)
-				{
-					cancelToken.ThrowIfCancellationRequested();
-
-					int id;
-					if (!Int32.TryParse (match.Groups[1].Value, out id))
-						continue;
-
-					ITextSnapshotLine lineSnapshot = snapshot.GetLineFromLineNumber (ln);
-					lineMap[id] = lineSnapshot;
-				}
-
-				ln++;
-			}
+			var lineMap = identifier.LineMap.ToDictionary (kvp => kvp.Key, kvp => snapshot.GetLineFromLineNumber (kvp.Value));
 
 			if (lineMap.Count == 0)
 				return null;
