@@ -140,28 +140,40 @@ namespace Instant
 		public override void VisitForStatement (ForStatement forStatement)
 		{
 			this.loopLevel++;
+
+			forStatement.EmbeddedStatement = GetLoopBlock (forStatement.EmbeddedStatement);
 			base.VisitForStatement (forStatement);
+
 			this.loopLevel--;
 		}
 
 		public override void VisitForeachStatement (ForeachStatement foreachStatement)
 		{
 			this.loopLevel++;
+
+			foreachStatement.EmbeddedStatement = GetLoopBlock (foreachStatement.EmbeddedStatement);
 			base.VisitForeachStatement (foreachStatement);
+
 			this.loopLevel--;
 		}
 
 		public override void VisitWhileStatement (WhileStatement whileStatement)
 		{
 			this.loopLevel++;
+
+			whileStatement.EmbeddedStatement = GetLoopBlock (whileStatement.EmbeddedStatement);
 			base.VisitWhileStatement (whileStatement);
+
 			this.loopLevel--;
 		}
 
 		public override void VisitDoWhileStatement (DoWhileStatement doWhileStatement)
 		{
 			this.loopLevel++;
+
+			doWhileStatement.EmbeddedStatement = GetLoopBlock (doWhileStatement.EmbeddedStatement);
 			base.VisitDoWhileStatement (doWhileStatement);
+
 			this.loopLevel--;
 		}
 
@@ -206,8 +218,6 @@ namespace Instant
 			blockStatement.Statements.AddRange (statements);
 		}
 
-		
-
 		protected int id;
 		protected int loopLevel;
 		protected readonly Queue<int> blockIds = new Queue<int>();
@@ -219,6 +229,24 @@ namespace Instant
 					|| statement is ForeachStatement
 					|| statement is WhileStatement
 					|| statement is DoWhileStatement;
+		}
+
+		private Statement GetLoopBlock (Statement statement)
+		{
+			this.blockIds.Enqueue (this.id++);
+
+			BlockStatement block = statement as BlockStatement;
+			if (block == null)
+			{
+				if (statement == Statement.Null)
+					block = new BlockStatement();
+				else
+					block = new BlockStatement { statement.Clone() };
+			}
+
+			this.id += 2;
+
+			return block;
 		}
 	}
 }
