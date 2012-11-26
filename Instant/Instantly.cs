@@ -76,12 +76,15 @@ namespace Instant
 			return Task.Factory.StartNew (() =>
 			{
 				string path = GetInstantDir();
+				string[] references = project.References.ToArray();
+				foreach (string reference in references)
+					File.Copy (reference, Path.Combine (path, Path.GetFileName (reference)));
 
 				var cparams = new CompilerParameters();
 				cparams.OutputAssembly = Path.Combine (path, Path.GetRandomFileName());
 				cparams.GenerateInMemory = false;
 				cparams.IncludeDebugInformation = false;
-				cparams.ReferencedAssemblies.AddRange (project.References.ToArray());
+				cparams.ReferencedAssemblies.AddRange (references);
 				cparams.ReferencedAssemblies.Add (typeof (Instantly).Assembly.Location);
 
 				// HACK: Wrap test code into a proper method
