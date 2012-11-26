@@ -17,6 +17,8 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using ICSharpCode.NRefactory.CSharp;
 namespace Instant
 {
@@ -69,6 +71,15 @@ namespace Instant
 
 			foreach (T element in self)
 				yield return element;
+		}
+
+		public static async Task<List<T>> ToListAsync<T> (this IEnumerable<Task<T>> self)
+		{
+			List<T> list = new List<T>();
+			foreach (Task<T> task in self)
+				list.Add (await task.ConfigureAwait (false));
+
+			return list;
 		}
 	}
 }
