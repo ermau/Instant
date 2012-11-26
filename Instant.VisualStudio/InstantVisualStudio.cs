@@ -17,6 +17,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -26,6 +27,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
+using Cadenza;
 using Cadenza.Collections;
 using EnvDTE;
 using Instant.Operations;
@@ -36,6 +38,7 @@ using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Text.Editor;
 using Roslyn.Compilers;
 using Roslyn.Compilers.CSharp;
+using VSLangProj;
 using Task = System.Threading.Tasks.Task;
 
 namespace Instant.VisualStudio
@@ -285,19 +288,104 @@ namespace Instant.VisualStudio
 			Execute (snapshot, source.Token);
 		}
 
+		private const string PhysicalFileKind = "{6BB5F8EE-4483-11D3-8BCF-00C04F8EC28C}";
+		private const string PhysicalFolderKind = "{6BB5F8EF-4483-11D3-8BCF-00C04F8EC28C}";
+		private const string VirtualFolderKind = "{6BB5F8F0-4483-11D3-8BCF-00C04F8EC28C}";
+
+		private IProject GetProject (string code)
+		{
+			Project instantProject = new Project();
+			instantProject.Sources.Add (Either<FileInfo, string>.B (code));
+
+			Document currentDoc = dte.ActiveDocument;
+
+			Solution solution = dte.Solution;
+
+			foreach (EnvDTE.Project project in solution.Projects)
+			{
+				Configuration config = project.ConfigurationManager.ActiveConfiguration;
+				if (!config.IsBuildable || currentDoc.ProjectItem.ContainingProject != project)
+					continue;
+
+				VSProject vsproj = (VSProject)project.Object;
+
+				AddFiles (instantProject, project.ProjectItems, currentDoc);
+				
+				foreach (Reference reference in vsproj.References)
+				{
+					if (!String.IsNullOrWhiteSpace (reference.Path))
+					{
+						if (Path.GetFileName (reference.Path) == "mscorlib.dll")
+							continue; // mscorlib is added automatically
+
+						instantProject.References.Add (reference.Path);
+					}
+					else
+						instantProject.References.Add (GetOutputPath (reference.SourceProject));
+				}
+			}
+
+			return instantProject;
+		}
+
+		private void AddFiles (Project project, ProjectItems items, Document currentDoc)
+		{
+			foreach (ProjectItem subItem in items)
+			{
+				if (currentDoc == subItem)
+					continue;
+
+				if (subItem.Kind == PhysicalFolderKind || subItem.Kind == VirtualFolderKind)
+					AddFiles (project, subItem.ProjectItems, currentDoc);
+				else if (subItem.Kind == PhysicalFileKind)
+				{
+					if (subItem.Name.EndsWith (".cs")) // HACK: Gotta be a better way to know if it's C#.
+					{
+						for (short i = 0; i < subItem.FileCount; i++)
+						{
+							string path = subItem.FileNames[i];
+							if (path == currentDoc.FullName)
+								continue;
+
+							project.Sources.Add (Either<FileInfo, string>.A (new FileInfo (path)));
+						}
+					}
+				}
+			}
+		}
+
+		private string GetOutputPath (EnvDTE.Project project)
+		{
+			FileInfo csproj = new FileInfo (project.FullName);
+
+			string outputPath = (string)project.ConfigurationManager.ActiveConfiguration.Properties.Item ("OutputPath").Value;
+			string file = (string)project.Properties.Item ("OutputFileName").Value;
+
+			return Path.Combine (csproj.Directory.FullName, outputPath, file);
+		}
+
 		private static readonly Regex IdRegex = new Regex (@"/\*_(\d+)_\*/", RegexOptions.Compiled);
-		private void Execute (ITextSnapshot snapshot, CancellationToken cancelToken)
+		private async Task Execute (ITextSnapshot snapshot, CancellationToken cancelToken)
 		{
 			try
 			{
-				string code = this.context.Span.GetText (snapshot);
+				var sink = new MemoryInstrumentationSink (cancelToken);
+				Submission submission = Hook.CreateSubmission (sink, cancelToken);
 
-				Instantly.InstrumentAndEvaluate (code, this.context.TestCode, cancelToken).ContinueWith (t =>
+				string original = snapshot.GetText();
+				string code = await Instantly.Instrument (original, submission);
+
+				if (cancelToken.IsCancellationRequested || code == null)
+					return;
+
+				IProject project = GetProject (code);
+
+				Instantly.Evaluate (project, this.context.TestCode).ContinueWith (t =>
 				{
 					if (t.IsCanceled || t.IsFaulted)
 						return;
 
-					var methods = t.Result ?? this.context.LastData;
+					var methods = sink.GetRootCalls() ?? this.context.LastData;
 					if (methods == null || methods.Count == 0)
 						return;
 
@@ -308,7 +396,7 @@ namespace Instant.VisualStudio
 							this.context.LastData = m;
 							AdornCode (s, c, m, ct);
 						}),
-						snapshot, code, methods, cancelToken);
+						snapshot, original, methods, cancelToken);
 				});
 			}
 			catch (Exception) // We don't have a way to show errors right now
@@ -356,7 +444,10 @@ namespace Instant.VisualStudio
 			var identifier = new IdentifyingVisitor();
 			tree.AcceptVisitor (identifier);
 
-			var lineMap = identifier.LineMap.ToDictionary (kvp => kvp.Key, kvp => snapshot.GetLineFromLineNumber (kvp.Value));
+			var lineMap = identifier.LineMap.ToDictionary (
+				kvp => kvp.Key,
+				kvp => snapshot.GetLineFromLineNumber (kvp.Value - 1) // VS lines are 0 based
+				);
 
 			if (lineMap.Count == 0)
 				return null;
@@ -379,7 +470,9 @@ namespace Instant.VisualStudio
 
 				Type opType = operation.GetType();
 
-				OperationVisuals vs = Mapping[opType];
+				OperationVisuals vs;
+				if (!Mapping.TryGetValue (opType, out vs))
+					continue;
 
 				ViewCache viewCache;
 				if (!views.TryGetValue (opType, out viewCache))
