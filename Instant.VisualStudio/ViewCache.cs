@@ -61,12 +61,19 @@ namespace Instant.VisualStudio
 
 		public InstantView[] ClearViews()
 		{
-			InstantView[] cleared = new InstantView[this.views.Count - this.index];
-			for (int i = 0; i < cleared.Length; i++)
+			InstantView[] cleared;
+
+			if (this.index >= this.views.Count)
+				cleared = new InstantView[0];
+			else
 			{
-				int x = this.views.Count - 1;
-				cleared[i] = this.views[x];
-				this.views.RemoveAt (x);
+				cleared = new InstantView[this.views.Count - this.index];
+				for (int i = 0; i < cleared.Length; i++)
+				{
+					int x = this.views.Count - 1;
+					cleared[i] = this.views[x];
+					this.views.RemoveAt (x);
+				}
 			}
 
 			this.index = 0;
