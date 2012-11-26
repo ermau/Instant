@@ -186,7 +186,7 @@ namespace Instant.VisualStudio
 					int index = location.SourceSpan.Start;
 					ITextSnapshotLine line = snapshot.GetLineFromPosition (index);
 					
-					// TODO: Fix this for multi-line method signatures
+					// TODO: Fix this for multi-line method signatures (#22)
 					string methodSignature = line.GetText();
 					if (this.context != null && methodSignature != this.context.MethodSignature)
 						continue;

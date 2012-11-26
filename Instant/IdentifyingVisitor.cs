@@ -51,36 +51,6 @@ namespace Instant
 			this.lineMap[this.id++] = initializer.StartLocation.Line;
 		}
 
-		private BinaryOperatorType GetComplexAssignOperator (AssignmentOperatorType type)
-		{
-			switch (type)
-			{
-				case AssignmentOperatorType.BitwiseOr:
-					return BinaryOperatorType.BitwiseOr;
-				case AssignmentOperatorType.BitwiseAnd:
-					return BinaryOperatorType.BitwiseAnd;
-				case AssignmentOperatorType.ExclusiveOr:
-					return BinaryOperatorType.ExclusiveOr;
-				case AssignmentOperatorType.Add:
-					return BinaryOperatorType.Add;
-				case AssignmentOperatorType.Subtract:
-					return BinaryOperatorType.Subtract;
-				case AssignmentOperatorType.Divide:
-					return BinaryOperatorType.Divide;
-				case AssignmentOperatorType.Modulus:
-					return BinaryOperatorType.Modulus;
-				case AssignmentOperatorType.Multiply:
-					return BinaryOperatorType.Multiply;
-				case AssignmentOperatorType.ShiftLeft:
-					return BinaryOperatorType.ShiftLeft;
-				case AssignmentOperatorType.ShiftRight:
-					return BinaryOperatorType.ShiftRight;
-
-				default:
-					throw new ArgumentException();
-			}
-		}
-
 		public override void VisitAssignmentExpression (AssignmentExpression expression)
 		{
 			base.VisitAssignmentExpression (expression);
