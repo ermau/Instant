@@ -17,10 +17,12 @@
 
 using System;
 using System.ComponentModel;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Cadenza;
 using Instant.Operations;
 using Roslyn.Compilers.CSharp;
 
@@ -159,6 +161,19 @@ namespace Instant.Standalone
 			}
 		}
 
+		public string TestCode
+		{
+			get { return this.testCode; }
+			set
+			{
+				if (this.testCode == value)
+					return;
+
+				this.testCode = value;
+				OnPropertyChanged ("TestCode");
+			}
+		}
+
 		private bool showDebugTree, showCompilerErrors, showIdentTree;
 		private string input, output, debug = "Initializing";
 
@@ -175,6 +190,7 @@ namespace Instant.Standalone
 		private MethodCall rootCall;
 		private string status;
 		private double fontSize = 16;
+		private string testCode;
 
 		private async void ProcessInput()
 		{
@@ -187,20 +203,23 @@ namespace Instant.Standalone
 				source.Dispose();
 			}
 
+			if (String.IsNullOrEmpty (input) || String.IsNullOrEmpty (TestCode))
+				return;
+
 			var sink = new MemoryInstrumentationSink (newSource.Token);
 			Submission s = Hook.CreateSubmission (sink, newSource.Token);
 			string instrumented = await Instantly.Instrument (input, s);
-			
-			//if (DebugTree)
+
+			if (DebugTree)
+				Debug = instrumented;
 			//	LogSyntaxTree (instrumented);
 
-			// HACK: Prototype has no way of identifying methods in a normal environment,
-			// previous method was achieved through ScriptEngine.
-			string testCode = "var foo = new Test.Foo(); foo.DoStuff();";
+			Project project = new Project();
+			project.Sources.Add (Either<FileInfo, string>.B (instrumented));
 
 			try
 			{
-				await Instantly.Evaluate (instrumented, testCode);
+				await Instantly.Evaluate (project, TestCode);
 				
 				var methods = sink.GetRootCalls();
 				if (methods == null || methods.Count == 0)

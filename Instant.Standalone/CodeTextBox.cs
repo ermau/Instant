@@ -86,6 +86,7 @@ namespace Instant.Standalone
 			SyntaxTree tree = SyntaxTree.Parse (Text);
 			tree.AcceptVisitor (identifier);
 
+			IdCode = tree.GetText();
 
 			var layer = AdornerLayer.GetAdornerLayer (this);
 			foreach (Adorner adorner in this.adorners.Values)
