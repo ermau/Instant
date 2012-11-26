@@ -36,6 +36,9 @@
     <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Cadenza">
+      <HintPath>..\Cadenza.dll</HintPath>
+    </Reference>
     <Reference Include="ICSharpCode.NRefactory, Version=5.0.0.0, Culture=neutral, PublicKeyToken=d4bfe873e7598c49, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\packages\ICSharpCode.NRefactory.5.2.0\lib\Net40\ICSharpCode.NRefactory.dll</HintPath>

@@ -34,6 +34,9 @@
     <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Cadenza">
+      <HintPath>..\Cadenza.dll</HintPath>
+    </Reference>
     <Reference Include="ICSharpCode.NRefactory">
       <HintPath>..\packages\ICSharpCode.NRefactory.5.2.0\lib\Net40\ICSharpCode.NRefactory.dll</HintPath>
     </Reference>
