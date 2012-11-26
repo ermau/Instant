@@ -82,6 +82,7 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="InstrumentingRewriter.cs" />
+    <Compile Include="IProject.cs" />
     <Compile Include="MemoryInstrumentationSink.cs" />
     <Compile Include="Operations\Loop.cs" />
     <Compile Include="Operations\LoopIteration.cs" />
@@ -90,6 +91,7 @@
     <Compile Include="Operations\OperationContainer.cs" />
     <Compile Include="Operations\ReturnValue.cs" />
     <Compile Include="Operations\StateChange.cs" />
+    <Compile Include="Project.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Submission.cs" />
   </ItemGroup>

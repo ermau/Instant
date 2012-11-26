@@ -18,11 +18,14 @@
 using System;
 using System.CodeDom.Compiler;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
+using Cadenza;
 using ICSharpCode.NRefactory.CSharp;
+using ICSharpCode.NRefactory.TypeSystem;
 using Instant.Operations;
 using Microsoft.CSharp;
 
@@ -49,6 +52,9 @@ namespace Instant
 				InstrumentingRewriter rewriter = new InstrumentingRewriter (submission);
 				tree.AcceptVisitor (rewriter);
 
+				if (tree.Errors.Any (e => e.ErrorType == ErrorType.Error))
+					return null;
+
 				return tree.GetText();
 			}, code);
 		}
@@ -56,59 +62,70 @@ namespace Instant
 		/// <summary>
 		/// Evaluates pre-instrumented code.
 		/// </summary>
-		/// <param name="instrumentedCode"></param>
-		/// <param name="evalSource"></param>
+		/// <param name="project">The representation of the current project.</param>
+		/// <param name="evalSource">The source code to execute as the test.</param>
 		/// <returns>A task for a dictionary of managed thread IDs to <see cref="MethodCall"/>s.</returns>
 		/// <seealso cref="Instrument(string,Instant.Submission)"/>
-		public static Task Evaluate (string instrumentedCode, string evalSource)
+		public static Task Evaluate (IProject project, string evalSource)
 		{
-			if (instrumentedCode == null)
-				throw new ArgumentNullException ("instrumentedCode");
+			if (project == null)
+				throw new ArgumentNullException ("project");
 			if (evalSource == null)
 				throw new ArgumentNullException ("evalSource");
 
 			return Task.Factory.StartNew (() =>
 			{
+				string path = GetInstantDir();
+
 				var cparams = new CompilerParameters();
-				cparams.GenerateInMemory = true;
+				cparams.OutputAssembly = Path.Combine (path, Path.GetRandomFileName());
+				cparams.GenerateInMemory = false;
 				cparams.IncludeDebugInformation = false;
-				cparams.ReferencedAssemblies.Add (typeof (string).Assembly.Location); // mscorlib
-				cparams.ReferencedAssemblies.Add (typeof (System.Diagnostics.Stopwatch).Assembly.Location); // System.dll
-				cparams.ReferencedAssemblies.Add (typeof (Enumerable).Assembly.Location); // System.Core
-				cparams.ReferencedAssemblies.Add (typeof (Hook).Assembly.Location);
+				cparams.ReferencedAssemblies.AddRange (project.References.ToArray());
+				cparams.ReferencedAssemblies.Add (typeof (Instantly).Assembly.Location);
 
 				// HACK: Wrap test code into a proper method
 				evalSource = "namespace Instant.User { static class Evaluation { static void Evaluate() {" + evalSource + " } } }";
+ 
+				List<string> sources = project.Sources.AsParallel().Select (
+						e => e.Fold (async f => await f.OpenText().ReadToEndAsync(), Task.FromResult)
+					).ToListAsync().Result;
 
+				sources.Add (evalSource);
+
+				// TODO: Needs to be in separate AppDomain so we can unload
 				CSharpCodeProvider provider = new CSharpCodeProvider();
-				CompilerResults results = provider.CompileAssemblyFromSource (cparams, instrumentedCode, evalSource);
-				if (results.Errors.Count > 0)
+				CompilerResults results = provider.CompileAssemblyFromSource (cparams, sources.ToArray());
+				if (results.Errors.HasErrors)
 					return;
 
 				MethodInfo method = results.CompiledAssembly.GetType ("Instant.User.Evaluation").GetMethod ("Evaluate", BindingFlags.NonPublic | BindingFlags.Static);
 				method.Invoke (null, null);
-			});
+			}, CancellationToken.None, TaskCreationOptions.None, TaskScheduler.Default);
 		}
 
-		/// <summary>
-		/// Instruments and evaluates the supplied source.
-		/// </summary>
-		/// <param name="code"></param>
-		/// <param name="evalSource"></param>
-		/// <param name="cancelToken"></param>
-		/// <returns>A task for a dictionary of managed thread IDs to <see cref="MethodCall"/>s.</returns>
-		public static async Task<IDictionary<int, MethodCall>> InstrumentAndEvaluate (string code, string evalSource, CancellationToken cancelToken)
+		private static string GetInstantDir()
 		{
-			var sink = new MemoryInstrumentationSink();
-			Submission submission = Hook.CreateSubmission (sink, cancelToken);
-			
-			string instrumented = await Instrument (code, submission).ConfigureAwait (false);
-			if (instrumented == null)
-				return null;
+			string temp = Path.GetTempPath();
+			string path = Path.Combine (temp, Path.GetRandomFileName());
 
-			await Evaluate (instrumented, evalSource).ConfigureAwait (false);
+			bool created = false;
+			while (!created)
+			{
+				try
+				{
+					Directory.CreateDirectory (path);
+					created = true;
+				}
+				catch (IOException)
+				{
+					path = Path.Combine (temp, Path.GetRandomFileName());
+				}
+			}
 
-			return sink.GetRootCalls();
+			File.Copy (typeof (Instantly).Assembly.Location, Path.Combine (path, "Instantly.dll"));
+
+			return path;
 		}
 	}
 }
