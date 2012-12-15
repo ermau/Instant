@@ -30,14 +30,14 @@ using System.Windows.Threading;
 using Cadenza;
 using Cadenza.Collections;
 using EnvDTE;
+using ICSharpCode.NRefactory.CSharp;
+using ICSharpCode.NRefactory.TypeSystem;
 using Instant.Operations;
 using Instant.VisualStudio.ViewModels;
 using Instant.VisualStudio.Views;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Text.Editor;
-using Roslyn.Compilers;
-using Roslyn.Compilers.CSharp;
 using VSLangProj;
 using Task = System.Threading.Tasks.Task;
 
@@ -174,22 +174,18 @@ namespace Instant.VisualStudio
 
 				string code = snapshot.GetText();
 
-				CompilationUnitSyntax root = SyntaxTree.ParseText (code, cancellationToken: cancelToken).GetRoot (cancelToken);
-				
-				if (root.GetDiagnostics().Any (d => d.Info.Severity == DiagnosticSeverity.Error))
+				SyntaxTree tree = SyntaxTree.Parse (code, cancellationToken: cancelToken);
+				if (tree.Errors.Any (e => e.ErrorType == ErrorType.Error))
 					return;
 
-				foreach (var m in root.DescendantNodes (n => !(n is MethodDeclarationSyntax)).OfType<MethodDeclarationSyntax>())
+				foreach (var m in tree.Descendants.OfType<MethodDeclaration>())
 				{
 					if (cancelToken.IsCancellationRequested)
 						return;
 
-					Location location = m.GetLocation();
-
-					int index = location.SourceSpan.Start;
-					ITextSnapshotLine line = snapshot.GetLineFromPosition (index);
+					ITextSnapshotLine line = snapshot.GetLineFromLineNumber (m.StartLocation.Line - 1);
 					
-					// TODO: Fix this for multi-line method signatures (#22)
+					// TODO: Fix this for multi-line method signatures
 					string methodSignature = line.GetText();
 					if (this.context != null && methodSignature != this.context.MethodSignature)
 						continue;
@@ -199,7 +195,7 @@ namespace Instant.VisualStudio
 						if (cancelToken.IsCancellationRequested)
 							return;
 
-						Span methodSpan = Span.FromBounds (index, location.SourceSpan.End);
+						Span methodSpan = Span.FromBounds (line.Start.Position, line.End.Position);
 						ITrackingSpan tracking;
 						
 						Button button = FindAdorner<Button> (methodSpan, this.view.TextSnapshot, out tracking);
