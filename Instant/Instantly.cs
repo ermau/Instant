@@ -47,7 +47,7 @@ namespace Instant
 
 			return Task<string>.Factory.StartNew (s =>
 			{
-				SyntaxTree tree = SyntaxTree.Parse ((string)s, cancellationToken: submission.CancelToken);
+				SyntaxTree tree = SyntaxTree.Parse ((string)s);
 
 				InstrumentingRewriter rewriter = new InstrumentingRewriter (submission);
 				tree.AcceptVisitor (rewriter);
@@ -66,7 +66,7 @@ namespace Instant
 		/// <param name="evalSource">The source code to execute as the test.</param>
 		/// <returns>A task for a dictionary of managed thread IDs to <see cref="MethodCall"/>s.</returns>
 		/// <seealso cref="Instrument(string,Instant.Submission)"/>
-		public static Task Evaluate (IProject project, string evalSource)
+		public static Task Evaluate (Submission submission, IProject project, string evalSource)
 		{
 			if (project == null)
 				throw new ArgumentNullException ("project");

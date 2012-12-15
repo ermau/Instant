@@ -15,17 +15,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System.Threading;
+using System;
 
 namespace Instant
 {
 	public class Submission
 	{
-		public Submission (int submissionId, IInstrumentationSink instrumentationSink, CancellationToken cancelToken = default(CancellationToken))
+		public Submission (int submissionId, IInstrumentationSink instrumentationSink)
 		{
 			SubmissionId = submissionId;
 			Sink = instrumentationSink;
-			CancelToken = cancelToken;
 		}
 
 		public int SubmissionId
@@ -40,10 +39,27 @@ namespace Instant
 			private set;
 		}
 
-		public CancellationToken CancelToken
+		public bool IsCanceled
 		{
 			get;
 			private set;
+		}
+
+		public void Cancel()
+		{
+			IsCanceled = true;
+		}
+	}
+
+	public static class SubmissionExtensions
+	{
+		public static void ThrowIfCancellationRequested (this Submission self)
+		{
+			if (self == null)
+				throw new ArgumentNullException ("self");
+
+			if (self.IsCanceled)
+				throw new OperationCanceledException();
 		}
 	}
 }

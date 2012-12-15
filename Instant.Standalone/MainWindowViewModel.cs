@@ -184,30 +184,27 @@ namespace Instant.Standalone
 				changed (this, new PropertyChangedEventArgs (property));
 		}
 
-		private CancellationTokenSource cancelSource;
-
 		private string lastOutput = String.Empty;
 		private MethodCall rootCall;
 		private string status;
 		private double fontSize = 16;
 		private string testCode;
 
+		private Submission submission;
+
 		private async void ProcessInput()
 		{
-			var newSource = new CancellationTokenSource();
-			var source = Interlocked.Exchange (ref this.cancelSource, newSource);
+			var source = Interlocked.Exchange (ref this.submission, null);
 
 			if (source != null)
-			{
 				source.Cancel();
-				source.Dispose();
-			}
 
 			if (String.IsNullOrEmpty (input) || String.IsNullOrEmpty (TestCode))
 				return;
 
-			var sink = new MemoryInstrumentationSink (newSource.Token);
-			Submission s = Hook.CreateSubmission (sink, newSource.Token);
+			Submission s = null;
+			var sink = new MemoryInstrumentationSink (() => s.IsCanceled);
+			s = Hook.CreateSubmission (sink);
 			string instrumented = await Instantly.Instrument (input, s);
 
 			if (DebugTree)
@@ -219,7 +216,7 @@ namespace Instant.Standalone
 
 			try
 			{
-				await Instantly.Evaluate (project, TestCode);
+				await Instantly.Evaluate (s, project, TestCode);
 				
 				var methods = sink.GetRootCalls();
 				if (methods == null || methods.Count == 0)

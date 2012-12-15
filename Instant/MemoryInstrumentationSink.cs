@@ -27,9 +27,12 @@ namespace Instant
 	public class MemoryInstrumentationSink
 		: IInstrumentationSink
 	{
-		public MemoryInstrumentationSink (CancellationToken cancelToken = default(CancellationToken))
+		public MemoryInstrumentationSink (Func<bool> getIsCanceled)
 		{
-			this.cancelToken = cancelToken;
+			if (getIsCanceled == null)
+				throw new ArgumentNullException ("getIsCanceled");
+
+			this.getIsCanceled = getIsCanceled;
 		}
 
 		public IDictionary<int, MethodCall> GetRootCalls()
@@ -142,7 +145,7 @@ namespace Instant
 		}
 		
 		private int loopLevel;
-		private readonly CancellationToken cancelToken;
+		private readonly Func<bool> getIsCanceled;
 		private readonly ConcurrentDictionary<int,Stack<OperationContainer>> operations = new ConcurrentDictionary<int, Stack<OperationContainer>>();		
 
 		private Stack<OperationContainer> Operations
@@ -186,7 +189,8 @@ namespace Instant
 
 			foreach (Operation operation in loop.Operations)
 			{
-				this.cancelToken.ThrowIfCancellationRequested();
+				if (this.getIsCanceled())
+					throw new OperationCanceledException();
 
 				var change = operation as StateChange;
 				if (change != null)
@@ -202,7 +206,8 @@ namespace Instant
 				{
 					foreach (Operation iterOp in iter.Operations)
 					{
-						this.cancelToken.ThrowIfCancellationRequested();
+						if (this.getIsCanceled())
+							throw new OperationCanceledException();
 
 						if (iterOp is Loop)
 						{

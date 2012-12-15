@@ -369,8 +369,9 @@ namespace Instant.VisualStudio
 		{
 			try
 			{
-				var sink = new MemoryInstrumentationSink (cancelToken);
-				Submission submission = Hook.CreateSubmission (sink, cancelToken);
+				Submission submission = null;
+				var sink = new MemoryInstrumentationSink (() => submission.IsCanceled);
+				submission = Hook.CreateSubmission (sink);
 
 				string original = snapshot.GetText();
 				string code = await Instantly.Instrument (original, submission);
@@ -380,7 +381,7 @@ namespace Instant.VisualStudio
 
 				IProject project = GetProject (code);
 
-				Instantly.Evaluate (project, this.context.TestCode).ContinueWith (t =>
+				Instantly.Evaluate (submission, project, this.context.TestCode).ContinueWith (t =>
 				{
 					if (t.IsCanceled || t.IsFaulted)
 						return;

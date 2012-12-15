@@ -23,16 +23,30 @@ namespace Instant
 {
 	public static class Hook
 	{
-		public static Submission CreateSubmission (IInstrumentationSink instrumentationSink, CancellationToken cancelToken)
+		public static Submission CreateSubmission (IInstrumentationSink instrumentationSink)
 		{
+			if (instrumentationSink == null)
+				throw new ArgumentNullException ("instrumentationSink");
+
 			lock (SubmissionLock)
 			{
 				int id = Interlocked.Increment (ref currentSubmission);
 
 				if (submission != null && submission.SubmissionId > id)
-					throw new OperationCanceledException (cancelToken);
+					throw new OperationCanceledException();
 
-				return submission = new Submission (id, instrumentationSink, cancelToken);
+				return submission = new Submission (id, instrumentationSink);
+			}
+		}
+
+		public static void LoadSubmission (Submission newSubmission)
+		{
+			if (newSubmission == null)
+				throw new ArgumentNullException ("newSubmission");
+
+			lock (SubmissionLock)
+			{
+				submission = newSubmission;
 			}
 		}
 
@@ -45,7 +59,7 @@ namespace Instant
 		public static void BeginInsideLoop (int submissionId, int id)
 		{
 			var s = GetSubmission (submissionId);
-			if (s.CancelToken.IsCancellationRequested)
+			if (s.IsCanceled)
 			{
 				EndLoop (submissionId, id);
 				throw new OperationCanceledException();
@@ -59,7 +73,7 @@ namespace Instant
 			var s = GetSubmission (submissionId);
 			s.Sink.EndInsideLoop (id);
 
-			if (s.CancelToken.IsCancellationRequested)
+			if (s.IsCanceled)
 			{
 				EndLoop (submissionId, id);
 				throw new OperationCanceledException();
@@ -105,7 +119,9 @@ namespace Instant
 		public static void LogEnterMethod (int submissionId, int id, string name, params StateChange[] arguments)
 		{
 			var s = GetSubmission (submissionId);
-			s.CancelToken.ThrowIfCancellationRequested();
+
+			if (s.IsCanceled)
+				throw new OperationCanceledException();
 
 			s.Sink.LogEnterMethod (id, name, arguments);
 		}
