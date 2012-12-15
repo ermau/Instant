@@ -26,8 +26,10 @@ namespace Instant.VisualStudio
 			code.Focus();
 		}
 
-		public string ShowForTestCode()
+		public string ShowForTestCode (string example)
 		{
+			this.code.Text = example;
+
 			bool? accepted = ShowDialog();
 			if (accepted == null || !accepted.Value)
 				return null;

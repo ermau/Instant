@@ -20,6 +20,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Windows;
@@ -66,6 +67,7 @@ namespace Instant.VisualStudio
 
 		private class ExecutionContext
 		{
+			public string ExampleCode;
 			public string MethodSignature;
 			public ITrackingSpan Span;
 			public ITextVersion Version;
@@ -166,6 +168,122 @@ namespace Instant.VisualStudio
 			return cancel;
 		}
 
+		private string GetExampleInvocation (MethodDeclaration method)
+		{
+			StringBuilder builder = new StringBuilder();
+
+			AstNode entity = method;
+			NamespaceDeclaration ns = null;
+			TypeDeclaration type = null;
+
+			while (ns == null)
+			{
+				if (entity.Parent == null)
+					break;
+
+				entity = entity.Parent;
+
+				if (type == null)
+					type = entity as TypeDeclaration;
+
+				ns = entity as NamespaceDeclaration;
+			}
+
+			if (type == null)
+				return null;
+
+			if (!method.Modifiers.HasFlag (Modifiers.Static))
+			{
+				builder.Append ("var obj = new ");
+				
+				if (ns != null)
+				{
+					builder.Append (ns.FullName);
+					builder.Append (".");
+				}
+
+				builder.Append (type.Name);
+				builder.AppendLine (" ();");
+
+				builder.Append ("obj.");
+			}
+			else
+			{
+				if (ns != null)
+				{
+					builder.Append (ns.FullName);
+					builder.Append (".");
+				}
+
+				builder.Append (type.Name);
+				builder.Append (".");
+				
+			}
+
+			builder.Append (method.Name);
+			builder.Append (" (");
+
+			BuildParameters (method.Parameters, builder);
+
+			builder.Append (");");
+
+			return builder.ToString();
+		}
+
+		private void BuildParameters (IEnumerable<ParameterDeclaration> parameters, StringBuilder builder)
+		{
+			bool first = true;
+			foreach (ParameterDeclaration parameterDeclaration in parameters)
+			{
+				if (!first)
+					builder.Append (", ");
+				else
+					first = false;
+
+				PrimitiveType primitive = parameterDeclaration.Type as PrimitiveType;
+				if (primitive != null)
+					builder.Append (GetTestValueForPrimitive (primitive));
+				else
+				{
+					builder.Append ("default(");
+					builder.Append (parameterDeclaration.Type.ToString());
+					builder.Append (")");
+				}
+			}
+		}
+
+		private string GetTestValueForPrimitive (PrimitiveType type)
+		{
+			switch (type.Keyword)
+			{
+				case "char":
+					return "'a'";
+				
+				case "uint":
+				case "int":
+				case "ushort":
+				case "short":
+				case "byte":
+				case "sbyte":
+				case "ulong":
+				case "long":
+					return "1";
+
+				case "decimal":
+					return "1.1m";
+				case "float":
+					return "1.1f";
+				case "double":
+					return "1.1";
+
+				case "string":
+					return "\"test\"";
+
+				default:
+					throw new ArgumentException();
+			}
+		}
+
 		private void LayoutButtons (ITextSnapshot newSnapshot, CancellationToken cancelToken)
 		{
 			Task.Factory.StartNew (s =>
@@ -189,7 +307,9 @@ namespace Instant.VisualStudio
 					string methodSignature = line.GetText();
 					if (this.context != null && methodSignature != this.context.MethodSignature)
 						continue;
-					
+
+					string exampleCode = GetExampleInvocation (m);
+
 					this.dispatcher.BeginInvoke ((Action)(() =>
 					{
 						if (cancelToken.IsCancellationRequested)
@@ -219,6 +339,7 @@ namespace Instant.VisualStudio
 							button.Content = "Instant";
 							button.Tag = new ExecutionContext
 							{
+								ExampleCode = exampleCode,
 								MethodSignature = methodSignature,
 								Span = tracking
 							};
@@ -265,14 +386,16 @@ namespace Instant.VisualStudio
 
 		private void OnClickInstant (object sender, RoutedEventArgs e)
 		{
+			Button b = (Button)sender;
+			ExecutionContext bContext = (ExecutionContext)b.Tag;
+
 			var window = new TestCodeWindow();
 			window.Owner = Application.Current.MainWindow;
-			string testCode = window.ShowForTestCode();
+			string testCode = window.ShowForTestCode (bContext.ExampleCode);
 			if (testCode == null)
 				return;
 
-			Button b = (Button)sender;
-			this.context = (ExecutionContext)b.Tag;
+			this.context = bContext;
 			this.context.TestCode = testCode;
 
 			this.layer.RemoveAllAdornments();
@@ -437,7 +560,7 @@ namespace Instant.VisualStudio
 
 		private Dictionary<int, ITextSnapshotLine> ConstructLineMap (ITextSnapshot snapshot, CancellationToken cancelToken, string code)
 		{
-			var tree = ICSharpCode.NRefactory.CSharp.SyntaxTree.Parse (code, cancellationToken: cancelToken);
+			var tree = SyntaxTree.Parse (code, cancellationToken: cancelToken);
 			var identifier = new IdentifyingVisitor();
 			tree.AcceptVisitor (identifier);
 
