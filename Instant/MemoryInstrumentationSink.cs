@@ -25,7 +25,7 @@ using Instant.Operations;
 namespace Instant
 {
 	public class MemoryInstrumentationSink
-		: IInstrumentationSink
+		: MarshalByRefObject, IInstrumentationSink
 	{
 		public MemoryInstrumentationSink (Func<bool> getIsCanceled)
 		{

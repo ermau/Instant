@@ -20,6 +20,7 @@ using System;
 namespace Instant
 {
 	public class Submission
+		: MarshalByRefObject
 	{
 		public Submission (int submissionId, IInstrumentationSink instrumentationSink)
 		{

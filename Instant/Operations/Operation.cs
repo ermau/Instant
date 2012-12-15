@@ -15,9 +15,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System;
+
 namespace Instant.Operations
 {
 	public abstract class Operation
+		: MarshalByRefObject
 	{
 		protected Operation (int id)
 		{

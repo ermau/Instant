@@ -21,6 +21,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.Remoting;
 using System.Threading;
 using System.Threading.Tasks;
 using Cadenza;
@@ -33,6 +34,17 @@ namespace Instant
 {
 	public static class Instantly
 	{
+		static Instantly()
+		{
+			AppDomain.CurrentDomain.AssemblyResolve += (sender, args) =>
+			{
+				if (args.Name.StartsWith ("Instant"))
+					return typeof (Instantly).Assembly;
+
+				return args.RequestingAssembly;
+			};
+		}
+
 		/// <summary>
 		/// Instruments the supplied code to call the <see cref="Hook"/> methods.
 		/// </summary>
@@ -75,10 +87,18 @@ namespace Instant
 
 			return Task.Factory.StartNew (() =>
 			{
-				string path = GetInstantDir();
+				string path;
+				AppDomain domain = GetDomain (out path);
+
 				string[] references = project.References.ToArray();
-				foreach (string reference in references)
-					File.Copy (reference, Path.Combine (path, Path.GetFileName (reference)));
+				for (int i = 0; i < references.Length; i++)
+				{
+					string reference = Path.Combine (path, Path.GetFileName (references[i]));
+					if (!File.Exists (reference))
+						File.Copy (references[i], reference);
+
+					references[i] = reference;
+				}
 
 				var cparams = new CompilerParameters();
 				cparams.OutputAssembly = Path.Combine (path, Path.GetRandomFileName());
@@ -96,15 +116,77 @@ namespace Instant
 
 				sources.Add (evalSource);
 
-				// TODO: Needs to be in separate AppDomain so we can unload
 				CSharpCodeProvider provider = new CSharpCodeProvider();
 				CompilerResults results = provider.CompileAssemblyFromSource (cparams, sources.ToArray());
 				if (results.Errors.HasErrors)
 					return;
 
-				MethodInfo method = results.CompiledAssembly.GetType ("Instant.User.Evaluation").GetMethod ("Evaluate", BindingFlags.NonPublic | BindingFlags.Static);
-				method.Invoke (null, null);
+				//MethodInfo method = results.CompiledAssembly.GetType ("Instant.User.Evaluation").GetMethod ("Evaluate", BindingFlags.NonPublic | BindingFlags.Static);
+				//method.Invoke (null, null);
+
+				try
+				{
+					Evaluator evaluator = (Evaluator)domain.CreateInstanceAndUnwrap ("Instant", "Instant.Instantly+Evaluator");
+					evaluator.Evaluate (submission, cparams, sources.ToArray());
+				}
+				catch (OperationCanceledException)
+				{
+				}
+
 			}, CancellationToken.None, TaskCreationOptions.None, TaskScheduler.Default);
+		}
+
+		private static readonly object DomainSync = new object();
+		private static AppDomain evaluatorDomain;
+		private static int domainCount;
+
+		private static AppDomain GetDomain (out string path)
+		{
+			lock (DomainSync)
+			{
+				if (evaluatorDomain == null || domainCount++ == 25)
+				{
+					if (evaluatorDomain != null)
+					{
+						Directory.Delete (evaluatorDomain.BaseDirectory, true);
+						AppDomain.Unload (evaluatorDomain);
+					}
+
+					domainCount = 0;
+
+					AppDomainSetup setup = new AppDomainSetup { ApplicationBase = GetInstantDir() };
+					evaluatorDomain = AppDomain.CreateDomain ("Instant Evaluation", null, setup);
+				}
+
+				path = evaluatorDomain.BaseDirectory;
+				return evaluatorDomain;
+			}
+		}
+
+		private class Evaluator
+			: MarshalByRefObject
+		{
+			public void Evaluate (Submission submission, CompilerParameters cparams, string[] sources)
+			{
+				CSharpCodeProvider provider = new CSharpCodeProvider();
+				CompilerResults results = provider.CompileAssemblyFromSource (cparams, sources);
+				if (results.Errors.HasErrors)
+					return;
+
+				MethodInfo method = results.CompiledAssembly.GetType ("Instant.User.Evaluation").GetMethod ("Evaluate", BindingFlags.NonPublic | BindingFlags.Static);
+				if (method == null)
+					return;
+
+				Hook.LoadSubmission (submission);
+
+				try
+				{
+					method.Invoke (null, null);
+				}
+				catch (OperationCanceledException)
+				{
+				}
+			}
 		}
 
 		private static string GetInstantDir()
@@ -126,7 +208,7 @@ namespace Instant
 				}
 			}
 
-			File.Copy (typeof (Instantly).Assembly.Location, Path.Combine (path, "Instantly.dll"));
+			File.Copy (typeof (Instantly).Assembly.Location, Path.Combine (path, "Instant.dll"));
 
 			return path;
 		}
