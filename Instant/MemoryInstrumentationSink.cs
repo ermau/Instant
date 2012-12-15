@@ -111,9 +111,9 @@ namespace Instant
 			AddOperation (call);
 		}
 
-		public void LogReturn<T> (int id, T value)
+		public void LogReturn (int id, string value)
 		{
-			AddOperation (new ReturnValue (id, Display.Object (value)));
+			AddOperation (new ReturnValue (id, value));
 
 			while (loopLevel > 0)
 			{
@@ -131,9 +131,9 @@ namespace Instant
 			AddOperation (call);
 		}
 
-		public void LogVariableChange<T> (int id, string variableName, T value)
+		public void LogVariableChange (int id, string variableName, string value)
 		{
-			AddOperation (new StateChange (id, variableName, Display.Object (value)));
+			AddOperation (new StateChange (id, variableName, value));
 		}
 
 		public void LogEnterMethod (int id, string name, params StateChange[] arguments)

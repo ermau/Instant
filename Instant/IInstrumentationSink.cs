@@ -27,9 +27,9 @@ namespace Instant
 		void EndLoop (int id);
 		
 		void LogReturn (int id);
-		void LogReturn<T> (int id, T value);
+		void LogReturn (int id, string value);
 
-		void LogVariableChange<T> (int id, string variableName, T value);
+		void LogVariableChange (int id, string variableName, string value);
 
 		void LogEnterMethod (int id, string name, params StateChange[] arguments);
 	}

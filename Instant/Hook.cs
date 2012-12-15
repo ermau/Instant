@@ -81,7 +81,7 @@ namespace Instant
 		public static T LogReturn<T> (int submissionId, int id, T value)
 		{
 			var sink = GetSink (submissionId);
-			sink.LogReturn (id, value);
+			sink.LogReturn (id, Display.Object (value));
 
 			return value;
 		}
@@ -89,7 +89,7 @@ namespace Instant
 		public static T LogObject<T> (int submissionId, int id, string name, T value)
 		{
 			var sink = GetSink (submissionId);
-			sink.LogVariableChange (id, name, value);
+			sink.LogVariableChange (id, name, Display.Object (value));
 
 			return value;
 		}
@@ -97,7 +97,7 @@ namespace Instant
 		public static T LogPostfix<T> (int submissionId, int id, T expression, string name, T newValue)
 		{
 			var sink = GetSink (submissionId);
-			sink.LogVariableChange (id, name, newValue);
+			sink.LogVariableChange (id, name, Display.Object (newValue));
 
 			return expression;
 		}
