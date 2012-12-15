@@ -206,6 +206,8 @@ namespace Instant.Standalone
 			var sink = new MemoryInstrumentationSink (() => s.IsCanceled);
 			s = Hook.CreateSubmission (sink);
 			string instrumented = await Instantly.Instrument (input, s);
+			if (instrumented == null)
+				return;
 
 			if (DebugTree)
 				Debug = instrumented;
