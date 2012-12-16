@@ -52,12 +52,12 @@ namespace Instant
 			this.submissionWait.Dispose();
 		}
 
-		private AppDomain domain;
-		private int domainCount;
 		private bool running;
 
 		private Submission nextSubmission;
 		private readonly AutoResetEvent submissionWait = new AutoResetEvent (false);
+
+		private readonly string RefPath = Path.Combine (Environment.GetFolderPath (Environment.SpecialFolder.ProgramFiles), "Reference Assemblies");
 
 		private void EvaluatorRunner()
 		{
@@ -67,79 +67,83 @@ namespace Instant
 
 				Submission next = Interlocked.Exchange (ref this.nextSubmission, null);
 
-				string path;
-				AppDomain evalDomain = GetDomain (out path);
-
-				string[] references = next.Project.References.ToArray();
-				for (int i = 0; i < references.Length; i++)
-				{
-					string reference = Path.Combine (path, Path.GetFileName (references[i]));
-					if (!File.Exists (reference))
-						File.Copy (references[i], reference);
-
-					references[i] = reference;
-				}
-
-				var cparams = new CompilerParameters();
-				cparams.OutputAssembly = Path.Combine (path, Path.GetRandomFileName());
-				cparams.GenerateInMemory = false;
-				cparams.IncludeDebugInformation = false;
-				cparams.ReferencedAssemblies.AddRange (references);
-				cparams.ReferencedAssemblies.Add (typeof (Instantly).Assembly.Location);
-
-				// HACK: Wrap test code into a proper method
-				string evalSource = "namespace Instant.User { static class Evaluation { static void Evaluate() {" + next.EvalCode + " } } }";
- 
-				List<string> sources = next.Project.Sources.AsParallel().Select (
-						e => e.Fold (async f => await f.OpenText().ReadToEndAsync(), Task.FromResult)
-					).ToListAsync().Result;
-
-				sources.Add (evalSource);
-
-				CSharpCodeProvider provider = new CSharpCodeProvider();
-				CompilerResults results = provider.CompileAssemblyFromSource (cparams, sources.ToArray());
-				if (results.Errors.HasErrors)
-					return;
-
-				//MethodInfo method = results.CompiledAssembly.GetType ("Instant.User.Evaluation").GetMethod ("Evaluate", BindingFlags.NonPublic | BindingFlags.Static);
-				//method.Invoke (null, null);
-
+				AppDomain evalDomain = null;
 				try
 				{
-					DomainEvaluator domainEvaluator = (DomainEvaluator)evalDomain.CreateInstanceAndUnwrap ("Instant", "Instant.Evaluator+DomainEvaluator");
-					domainEvaluator.Evaluate (next, cparams, sources.ToArray());
-				}
-				catch (OperationCanceledException)
-				{
-				}
+					AppDomainSetup setup = new AppDomainSetup
+					{
+						ApplicationBase = GetInstantDir(),
+						LoaderOptimization = LoaderOptimization.MultiDomainHost
+					};
+					evalDomain = AppDomain.CreateDomain ("Instant Evaluation", null, setup);
 
-				OnEvaluationCompleted (new EvaluationCompletedEventArgs (next));
+					bool error = false;
+
+					string[] references = next.Project.References.ToArray();
+					for (int i = 0; i < references.Length; i++)
+					{
+						// HACK: We don't need to copy reference assemblies.
+						if (references[i].StartsWith (RefPath))
+							continue;
+
+						string reference = Path.Combine (setup.ApplicationBase, Path.GetFileName (references[i]));
+
+						if (!File.Exists (references[i]))
+						{
+							error = true;
+							break;
+						}
+
+						File.Copy (references[i], reference);
+
+						references[i] = reference;
+					}
+
+					if (error)
+						continue;
+
+					var cparams = new CompilerParameters();
+					cparams.OutputAssembly = Path.Combine (setup.ApplicationBase, Path.GetRandomFileName());
+					cparams.GenerateInMemory = false;
+					cparams.IncludeDebugInformation = false;
+					cparams.ReferencedAssemblies.AddRange (references);
+					cparams.ReferencedAssemblies.Add (typeof (Instantly).Assembly.Location);
+
+					// HACK: Wrap test code into a proper method
+					string evalSource = "namespace Instant.User { static class Evaluation { static void Evaluate() {" + next.EvalCode + " } } }";
+ 
+					List<string> sources = next.Project.Sources.AsParallel().Select (
+							e => e.Fold (async f => await f.OpenText().ReadToEndAsync(), Task.FromResult)
+						).ToListAsync().Result;
+
+					sources.Add (evalSource);
+
+					CSharpCodeProvider provider = new CSharpCodeProvider();
+					CompilerResults results = provider.CompileAssemblyFromSource (cparams, sources.ToArray());
+					if (results.Errors.HasErrors)
+						return;
+
+					try
+					{
+						DomainEvaluator domainEvaluator = (DomainEvaluator)evalDomain.CreateInstanceAndUnwrap ("Instant", "Instant.Evaluator+DomainEvaluator");
+						domainEvaluator.Evaluate (next, cparams, sources.ToArray());
+					}
+					catch (OperationCanceledException)
+					{
+					}
+
+					OnEvaluationCompleted (new EvaluationCompletedEventArgs (next));
+				}
+				finally
+				{
+					if (evalDomain != null)
+					{
+						string dir = evalDomain.BaseDirectory;
+						AppDomain.Unload (evalDomain);
+						Directory.Delete (dir, true);
+					}
+				}
 			}
-		}
-
-		private AppDomain GetDomain (out string path)
-		{
-			if (domain == null || domainCount++ == 25)
-			{
-				if (domain != null)
-				{
-					string dir = domain.BaseDirectory;
-					AppDomain.Unload (domain);
-					Directory.Delete (dir, true);
-				}
-
-				domainCount = 0;
-
-				AppDomainSetup setup = new AppDomainSetup
-				{
-					ApplicationBase = GetInstantDir(),
-					LoaderOptimization = LoaderOptimization.MultiDomainHost
-				};
-				domain = AppDomain.CreateDomain ("Instant Evaluation", null, setup);
-			}
-
-			path = domain.BaseDirectory;
-			return domain;
 		}
 
 		private class DomainEvaluator
