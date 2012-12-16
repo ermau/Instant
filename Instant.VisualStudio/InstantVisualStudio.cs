@@ -153,24 +153,27 @@ namespace Instant.VisualStudio
 					(byte)((oleColor >> 16) & 0xFF)));
 		}
 
+		/// <summary>
+		/// Gets a <see cref="CancellationTokenSource"/> and optionally cancels an old one.
+		/// </summary>
+		/// <param name="current">Whether or not to use the current source, if available.</param>
 		private CancellationTokenSource GetCancelSource (bool current = false)
 		{
+			var source = new CancellationTokenSource();
 			if (current)
 			{
-				var source = new CancellationTokenSource();
 				var currentSource = Interlocked.CompareExchange (ref this.cancelSource, source, null);
 				return currentSource ?? source;
 			}
 
-			var cancel = new CancellationTokenSource();
-			CancellationTokenSource oldCancel = Interlocked.Exchange (ref this.cancelSource, cancel);
+			CancellationTokenSource oldCancel = Interlocked.Exchange (ref this.cancelSource, source);
 			if (oldCancel != null)
 			{
 				oldCancel.Cancel();
 				oldCancel.Dispose();
 			}
 
-			return cancel;
+			return source;
 		}
 
 		private string GetExampleInvocation (MethodDeclaration method)
