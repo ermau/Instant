@@ -55,7 +55,12 @@ namespace Instant.VisualStudio
 			this.view.LayoutChanged += OnLayoutChanged;
 
 			this.dispatcher = Dispatcher.CurrentDispatcher;
+
+			this.evaluator.EvaluationCompleted += OnEvaluationCompleted;
+			this.evaluator.Start();
 		}
+
+		private readonly Evaluator evaluator = new Evaluator();
 
 		private readonly IAdornmentLayer layer;
 		private readonly IWpfTextView view;
@@ -484,47 +489,49 @@ namespace Instant.VisualStudio
 		}
 
 		private static readonly Regex IdRegex = new Regex (@"/\*_(\d+)_\*/", RegexOptions.Compiled);
-		private async Task Execute (ITextSnapshot snapshot, CancellationToken cancelToken)
+
+		private static int submissionId;
+
+		private void OnEvaluationCompleted (object sender, EvaluationCompletedEventArgs e)
 		{
-			try
-			{
-				Submission submission = null;
-				var sink = new MemoryInstrumentationSink (() => submission.IsCanceled);
-				submission = Hook.CreateSubmission (sink);
+			var sink = (MemoryInstrumentationSink)e.Submission.Sink;
 
-				string original = snapshot.GetText();
-				string code = await Instantly.Instrument (original, submission);
+			var methods = sink.GetRootCalls() ?? this.context.LastData;
+			if (methods == null || methods.Count == 0)
+				return;
 
-				if (cancelToken.IsCancellationRequested || code == null)
-					return;
+			System.Tuple<ITextSnapshot, string> adornContext = (System.Tuple<ITextSnapshot,string>)e.Submission.Tag;
 
-				IProject project = GetProject (code);
-
-				Instantly.Evaluate (submission, project, this.context.TestCode).ContinueWith (t =>
+			this.dispatcher.BeginInvoke ((Action<ITextSnapshot,string,IDictionary<int,MethodCall>>)
+				((s,c,m) =>
 				{
-					if (t.IsCanceled || t.IsFaulted)
-						return;
-
-					var methods = sink.GetRootCalls() ?? this.context.LastData;
-					if (methods == null || methods.Count == 0)
-						return;
-
-					// BUG: These can arrive out of order
-					this.dispatcher.BeginInvoke ((Action<ITextSnapshot,string,IDictionary<int,MethodCall>,CancellationToken>)
-						((s,c,m,ct) =>
-						{
-							this.context.LastData = m;
-							AdornCode (s, c, m, ct);
-						}),
-						snapshot, original, methods, cancelToken);
-				});
-			}
-			catch (Exception) // We don't have a way to show errors right now
-			{
-			}
+					this.context.LastData = m;
+					AdornCode (s, c, m);
+				}),
+				adornContext.Item1, adornContext.Item2, methods);
 		}
 
-		private void AdornCode (ITextSnapshot snapshot, CancellationToken token)
+		private async Task Execute (ITextSnapshot snapshot, CancellationToken cancelToken)
+		{
+			int id = Interlocked.Increment (ref submissionId);
+
+			string original = snapshot.GetText();
+			string code = await Instantly.Instrument (original, id);
+
+			if (cancelToken.IsCancellationRequested || code == null)
+				return;
+
+			IProject project = GetProject (code);
+
+			Submission submission = null;
+			var sink = new MemoryInstrumentationSink (() => submission.IsCanceled);
+			submission = new Submission (id, project, sink, this.context.TestCode);
+			submission.Tag = new System.Tuple<ITextSnapshot, string> (snapshot, original);
+
+			this.evaluator.PushSubmission (submission);
+		}
+
+		private void AdornCode (ITextSnapshot snapshot, CancellationToken token = default(CancellationToken))
 		{
 			if (this.context == null || this.context.LastData == null)
 				return;
@@ -532,7 +539,7 @@ namespace Instant.VisualStudio
 			AdornCode (snapshot, this.context.Span.GetText (snapshot), this.context.LastData, token);
 		}
 
-		private void AdornCode (ITextSnapshot snapshot, string code, IDictionary<int, MethodCall> methods, CancellationToken cancelToken)
+		private void AdornCode (ITextSnapshot snapshot, string code, IDictionary<int, MethodCall> methods, CancellationToken cancelToken = default(CancellationToken))
 		{
 			try
 			{

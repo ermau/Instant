@@ -31,6 +31,11 @@ namespace Instant.Standalone
 	public class MainWindowViewModel
 		: INotifyPropertyChanged
 	{
+		public MainWindowViewModel()
+		{
+			this.evaluator.EvaluationCompleted += OnEvalCompleted;
+			this.evaluator.Start();
+		}
 
 		public event PropertyChangedEventHandler PropertyChanged;
 
@@ -192,6 +197,22 @@ namespace Instant.Standalone
 
 		private Submission submission;
 
+		private readonly Evaluator evaluator = new Evaluator();
+
+		private int submissionId;
+
+		private void OnEvalCompleted (object sender, EvaluationCompletedEventArgs e)
+		{
+			MemoryInstrumentationSink sink = (MemoryInstrumentationSink)e.Submission.Sink;
+
+			var methods = sink.GetRootCalls();
+			if (methods == null || methods.Count == 0)
+				return;
+
+			RootCall = methods.Values.First();
+			Status = null;
+		}
+
 		private async void ProcessInput()
 		{
 			var source = Interlocked.Exchange (ref this.submission, null);
@@ -202,36 +223,23 @@ namespace Instant.Standalone
 			if (String.IsNullOrEmpty (input) || String.IsNullOrEmpty (TestCode))
 				return;
 
-			Submission s = null;
-			var sink = new MemoryInstrumentationSink (() => s.IsCanceled);
-			s = Hook.CreateSubmission (sink);
-			string instrumented = await Instantly.Instrument (input, s);
+			int id = Interlocked.Increment (ref this.submissionId);
+
+			string instrumented = await Instantly.Instrument (input, id);
 			if (instrumented == null)
 				return;
-
-			if (DebugTree)
-				Debug = instrumented;
-			//	LogSyntaxTree (instrumented);
 
 			Project project = new Project();
 			project.Sources.Add (Either<FileInfo, string>.B (instrumented));
 
-			try
-			{
-				await Instantly.Evaluate (s, project, TestCode);
-				
-				var methods = sink.GetRootCalls();
-				if (methods == null || methods.Count == 0)
-					return;
+			Submission s = null;
+			var sink = new MemoryInstrumentationSink (() => s.IsCanceled);
+			s = new Submission (id, project, sink, TestCode);
 
-				RootCall = methods.Values.First();
-				Status = null;
-			}
-			catch (Exception ex)
-			{
-				Status = ex.Message;
-				Output = ex.ToString();
-			}
+			if (DebugTree)
+				Debug = instrumented;
+
+			this.evaluator.PushSubmission (s);
 		}
 
 		private void LogSyntaxTree (SyntaxNode node)

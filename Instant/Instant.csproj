@@ -74,6 +74,7 @@
     <Compile Include="Display.cs">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Evaluator.cs" />
     <Compile Include="Extensions.cs" />
     <Compile Include="Hook.cs" />
     <Compile Include="IdentifyingVisitor.cs" />

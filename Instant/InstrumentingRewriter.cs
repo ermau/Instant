@@ -25,12 +25,9 @@ namespace Instant
 	public class InstrumentingRewriter
 		: DepthFirstAstVisitor
 	{
-		public InstrumentingRewriter (Submission submission)
+		public InstrumentingRewriter (int submissionId)
 		{
-			if (submission == null)
-				throw new ArgumentNullException ("submission");
-
-			this.submission = submission;
+			this.submissionId = submissionId;
 		}
 
 		public override void VisitMethodDeclaration (MethodDeclaration methodDeclaration)
@@ -42,7 +39,7 @@ namespace Instant
 				return;
 
 			var hook =	GetHookExpression ("LogEnterMethod",
-							new PrimitiveExpression (this.submission.SubmissionId),
+							new PrimitiveExpression (this.submissionId),
 							new PrimitiveExpression (this.id++),
 							new PrimitiveExpression (methodDeclaration.Name));
 
@@ -244,7 +241,7 @@ namespace Instant
 			blockStatement.Statements.AddRange (statements);
 		}
 
-		private readonly Submission submission;
+		private readonly int submissionId;
 		private int id;
 		private int loopLevel;
 		private readonly Queue<int> blockIds = new Queue<int>();
@@ -278,7 +275,7 @@ namespace Instant
 
 		private PrimitiveExpression GetSubmissionId()
 		{
-			return new PrimitiveExpression (this.submission.SubmissionId);
+			return new PrimitiveExpression (this.submissionId);
 		}
 
 		private PrimitiveExpression GetId()

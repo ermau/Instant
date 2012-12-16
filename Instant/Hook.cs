@@ -23,31 +23,12 @@ namespace Instant
 {
 	public static class Hook
 	{
-		public static Submission CreateSubmission (IInstrumentationSink instrumentationSink)
-		{
-			if (instrumentationSink == null)
-				throw new ArgumentNullException ("instrumentationSink");
-
-			lock (SubmissionLock)
-			{
-				int id = Interlocked.Increment (ref currentSubmission);
-
-				if (submission != null && submission.SubmissionId > id)
-					throw new OperationCanceledException();
-
-				return submission = new Submission (id, instrumentationSink);
-			}
-		}
-
 		public static void LoadSubmission (Submission newSubmission)
 		{
 			if (newSubmission == null)
 				throw new ArgumentNullException ("newSubmission");
 
-			lock (SubmissionLock)
-			{
-				submission = newSubmission;
-			}
+			submission = newSubmission;
 		}
 
 		public static void BeginLoop (int submissionId, int id)
@@ -126,8 +107,6 @@ namespace Instant
 			s.Sink.LogEnterMethod (id, name, arguments);
 		}
 
-		private static readonly object SubmissionLock = new object();
-		private static int currentSubmission;
 		private static Submission submission;
 
 		private static Submission GetSubmission (int submissionId)
