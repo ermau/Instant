@@ -82,6 +82,7 @@
     <Compile Include="InstrumentingRewriter.cs" />
     <Compile Include="IProject.cs" />
     <Compile Include="MemoryInstrumentationSink.cs" />
+    <Compile Include="MethodDeclarationExtensions.cs" />
     <Compile Include="Operations\Loop.cs" />
     <Compile Include="Operations\LoopIteration.cs" />
     <Compile Include="Operations\MethodCall.cs" />

@@ -212,122 +212,6 @@ namespace Instant.VisualStudio
 			return source;
 		}
 
-		private string GetExampleInvocation (MethodDeclaration method)
-		{
-			StringBuilder builder = new StringBuilder();
-
-			AstNode entity = method;
-			NamespaceDeclaration ns = null;
-			TypeDeclaration type = null;
-
-			while (ns == null)
-			{
-				if (entity.Parent == null)
-					break;
-
-				entity = entity.Parent;
-
-				if (type == null)
-					type = entity as TypeDeclaration;
-
-				ns = entity as NamespaceDeclaration;
-			}
-
-			if (type == null)
-				return null;
-
-			if (!method.Modifiers.HasFlag (Modifiers.Static))
-			{
-				builder.Append ("var obj = new ");
-				
-				if (ns != null)
-				{
-					builder.Append (ns.FullName);
-					builder.Append (".");
-				}
-
-				builder.Append (type.Name);
-				builder.AppendLine (" ();");
-
-				builder.Append ("obj.");
-			}
-			else
-			{
-				if (ns != null)
-				{
-					builder.Append (ns.FullName);
-					builder.Append (".");
-				}
-
-				builder.Append (type.Name);
-				builder.Append (".");
-				
-			}
-
-			builder.Append (method.Name);
-			builder.Append (" (");
-
-			BuildParameters (method.Parameters, builder);
-
-			builder.Append (");");
-
-			return builder.ToString();
-		}
-
-		private void BuildParameters (IEnumerable<ParameterDeclaration> parameters, StringBuilder builder)
-		{
-			bool first = true;
-			foreach (ParameterDeclaration parameterDeclaration in parameters)
-			{
-				if (!first)
-					builder.Append (", ");
-				else
-					first = false;
-
-				PrimitiveType primitive = parameterDeclaration.Type as PrimitiveType;
-				if (primitive != null)
-					builder.Append (GetTestValueForPrimitive (primitive));
-				else
-				{
-					builder.Append ("default(");
-					builder.Append (parameterDeclaration.Type.ToString());
-					builder.Append (")");
-				}
-			}
-		}
-
-		private string GetTestValueForPrimitive (PrimitiveType type)
-		{
-			switch (type.Keyword)
-			{
-				case "char":
-					return "'a'";
-				
-				case "uint":
-				case "int":
-				case "ushort":
-				case "short":
-				case "byte":
-				case "sbyte":
-				case "ulong":
-				case "long":
-					return "1";
-
-				case "decimal":
-					return "1.1m";
-				case "float":
-					return "1.1f";
-				case "double":
-					return "1.1";
-
-				case "string":
-					return "\"test\"";
-
-				default:
-					throw new ArgumentException();
-			}
-		}
-
 		private void LayoutButtons (ITextSnapshot newSnapshot, CancellationToken cancelToken)
 		{
 			Task.Factory.StartNew (s =>
@@ -353,7 +237,7 @@ namespace Instant.VisualStudio
 					if (this.context != null && methodSignature != this.context.MethodSignature)
 						continue;
 
-					string exampleCode = GetExampleInvocation (m);
+					string exampleCode = m.GetExampleInvocation();
 
 					this.dispatcher.BeginInvoke ((Action)(() =>
 					{
