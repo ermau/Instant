@@ -17,16 +17,13 @@
 
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
-using Cadenza;
 using Cadenza.Collections;
 using EnvDTE;
 using ICSharpCode.NRefactory.CSharp;
@@ -34,7 +31,6 @@ using ICSharpCode.NRefactory.TypeSystem;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Text.Editor;
-using VSLangProj;
 using Task = System.Threading.Tasks.Task;
 
 namespace Instant.VisualStudio
@@ -336,82 +332,6 @@ namespace Instant.VisualStudio
 			Execute (snapshot, source.Token);
 		}
 
-		private const string PhysicalFileKind = "{6BB5F8EE-4483-11D3-8BCF-00C04F8EC28C}";
-		private const string PhysicalFolderKind = "{6BB5F8EF-4483-11D3-8BCF-00C04F8EC28C}";
-		private const string VirtualFolderKind = "{6BB5F8F0-4483-11D3-8BCF-00C04F8EC28C}";
-
-		private IProject GetProject (string code)
-		{
-			Project instantProject = new Project();
-			instantProject.Sources.Add (Either<FileInfo, string>.B (code));
-
-			Document currentDoc = this.document;
-
-			Solution solution = dte.Solution;
-
-			foreach (EnvDTE.Project project in solution.Projects)
-			{
-				Configuration config = project.ConfigurationManager.ActiveConfiguration;
-				if (!config.IsBuildable || currentDoc.ProjectItem.ContainingProject != project)
-					continue;
-
-				VSProject vsproj = (VSProject)project.Object;
-
-				AddFiles (instantProject, project.ProjectItems, currentDoc);
-				
-				foreach (Reference reference in vsproj.References)
-				{
-					if (!String.IsNullOrWhiteSpace (reference.Path))
-					{
-						if (Path.GetFileName (reference.Path) == "mscorlib.dll")
-							continue; // mscorlib is added automatically
-
-						instantProject.References.Add (reference.Path);
-					}
-					else
-						instantProject.References.Add (GetOutputPath (reference.SourceProject));
-				}
-			}
-
-			return instantProject;
-		}
-
-		private void AddFiles (Project project, ProjectItems items, Document currentDoc)
-		{
-			foreach (ProjectItem subItem in items)
-			{
-				if (currentDoc == subItem)
-					continue;
-
-				if (subItem.Kind == PhysicalFolderKind || subItem.Kind == VirtualFolderKind)
-					AddFiles (project, subItem.ProjectItems, currentDoc);
-				else if (subItem.Kind == PhysicalFileKind)
-				{
-					if (subItem.Name.EndsWith (".cs")) // HACK: Gotta be a better way to know if it's C#.
-					{
-						for (short i = 0; i < subItem.FileCount; i++)
-						{
-							string path = subItem.FileNames[i];
-							if (path == currentDoc.FullName)
-								continue;
-
-							project.Sources.Add (Either<FileInfo, string>.A (new FileInfo (path)));
-						}
-					}
-				}
-			}
-		}
-
-		private string GetOutputPath (EnvDTE.Project project)
-		{
-			FileInfo csproj = new FileInfo (project.FullName);
-
-			string outputPath = (string)project.ConfigurationManager.ActiveConfiguration.Properties.Item ("OutputPath").Value;
-			string file = (string)project.Properties.Item ("OutputFileName").Value;
-
-			return Path.Combine (csproj.Directory.FullName, outputPath, file);
-		}
-
 		private void OnEvaluationCompleted (object sender, EvaluationCompletedEventArgs e)
 		{
 			var sink = (MemoryInstrumentationSink)e.Submission.Sink;
@@ -441,7 +361,7 @@ namespace Instant.VisualStudio
 			if (cancelToken.IsCancellationRequested || code == null)
 				return;
 
-			IProject project = GetProject (code);
+			IProject project = this.dte.GetProject (this.document, code);
 
 			Submission submission = null;
 			var sink = new MemoryInstrumentationSink (() => submission.IsCanceled);
