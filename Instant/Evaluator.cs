@@ -130,7 +130,11 @@ namespace Instant
 
 				domainCount = 0;
 
-				AppDomainSetup setup = new AppDomainSetup { ApplicationBase = GetInstantDir() };
+				AppDomainSetup setup = new AppDomainSetup
+				{
+					ApplicationBase = GetInstantDir(),
+					LoaderOptimization = LoaderOptimization.MultiDomainHost
+				};
 				domain = AppDomain.CreateDomain ("Instant Evaluation", null, setup);
 			}
 
