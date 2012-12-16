@@ -16,6 +16,7 @@
 // limitations under the License.
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using Cadenza;
 using EnvDTE;
@@ -45,22 +46,29 @@ namespace Instant.VisualStudio
 				VSProject vsproj = (VSProject)project.Object;
 
 				AddFiles (instantProject, project.ProjectItems, currentDoc);
-				
-				foreach (Reference reference in vsproj.References)
-				{
-					if (!String.IsNullOrWhiteSpace (reference.Path))
-					{
-						if (Path.GetFileName (reference.Path) == "mscorlib.dll")
-							continue; // mscorlib is added automatically
-
-						instantProject.References.Add (reference.Path);
-					}
-					else
-						instantProject.References.Add (GetOutputPath (reference.SourceProject));
-				}
+				AddReferences (instantProject, vsproj.References);
 			}
 
 			return instantProject;
+		}
+
+		private static void AddReferences (Project instantProject, References references)
+		{
+			foreach (Reference reference in references)
+			{
+				if (reference.SourceProject == null)
+				{
+					if (Path.GetFileName (reference.Path) == "mscorlib.dll")
+						continue; // mscorlib is added automatically
+
+					instantProject.References.Add (reference.Path);
+				}
+				else
+				{
+					instantProject.References.Add (GetOutputPath (reference.SourceProject));
+					AddReferences (instantProject, ((VSProject)reference.SourceProject.Object).References);
+				}
+			}
 		}
 
 		private static void AddFiles (Project project, ProjectItems items, Document currentDoc)

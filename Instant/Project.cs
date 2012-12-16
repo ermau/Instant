@@ -41,7 +41,7 @@ namespace Instant
 		}
 
 		private readonly List<Either<FileInfo, string>> sources = new List<Either<FileInfo, string>>();
-		private readonly List<string> references = new List<string>();
+		private readonly HashSet<string> references = new HashSet<string>();
 
 		IEnumerable<string> IProject.References
 		{
