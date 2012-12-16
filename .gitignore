@@ -6,3 +6,4 @@ Bin
 _ReSharper*
 *.dotCover
 *.ide
+*.DotSettings
