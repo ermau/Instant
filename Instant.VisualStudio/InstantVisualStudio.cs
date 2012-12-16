@@ -17,11 +17,9 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
-using System.Text.RegularExpressions;
 using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
@@ -79,6 +77,7 @@ namespace Instant.VisualStudio
 
 		private Document document;
 
+		private static int submissionId;
 		private readonly Evaluator evaluator = new Evaluator();
 
 		private readonly IAdornmentLayer layer;
@@ -531,10 +530,6 @@ namespace Instant.VisualStudio
 
 			return Path.Combine (csproj.Directory.FullName, outputPath, file);
 		}
-
-		private static readonly Regex IdRegex = new Regex (@"/\*_(\d+)_\*/", RegexOptions.Compiled);
-
-		private static int submissionId;
 
 		private void OnEvaluationCompleted (object sender, EvaluationCompletedEventArgs e)
 		{
