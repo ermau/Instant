@@ -45,6 +45,7 @@ using Task = System.Threading.Tasks.Task;
 namespace Instant.VisualStudio
 {
 	public class InstantVisualStudio
+		: IDisposable
 	{
 		public InstantVisualStudio (IWpfTextView view)
 		{
@@ -58,6 +59,15 @@ namespace Instant.VisualStudio
 
 			this.evaluator.EvaluationCompleted += OnEvaluationCompleted;
 			this.evaluator.Start();
+		}
+
+		public void Dispose()
+		{
+			CancellationTokenSource source = this.cancelSource;
+			if (source != null)
+				source.Dispose();
+
+			this.evaluator.Dispose();
 		}
 
 		private readonly Evaluator evaluator = new Evaluator();

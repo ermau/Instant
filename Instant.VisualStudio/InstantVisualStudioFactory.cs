@@ -15,37 +15,51 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.ComponentModel.Composition;
+using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Text.Editor;
 using Microsoft.VisualStudio.Utilities;
 
 namespace Instant.VisualStudio
 {
-    /// <summary>
-    /// Establishes an <see cref="IAdornmentLayer"/> to place the adornment on and exports the <see cref="IWpfTextViewCreationListener"/>
-    /// that instantiates the adornment on the event of a <see cref="IWpfTextView"/>'s creation
-    /// </summary>
-    [Export(typeof(IWpfTextViewCreationListener))]
-    [ContentType("text")]
-    [TextViewRole(PredefinedTextViewRoles.Document)]
-    internal sealed class InstantVisualStudioFactory : IWpfTextViewCreationListener
-    {
-        /// <summary>
-        /// Defines the adornment layer for the adornment. This layer is ordered 
-        /// after the selection layer in the Z-order
-        /// </summary>
-        [Export(typeof(AdornmentLayerDefinition))]
-        [Name("Instant.VisualStudio")]
-        [Order(After = PredefinedAdornmentLayers.Text, Before = PredefinedAdornmentLayers.Caret)]
-        public AdornmentLayerDefinition editorAdornmentLayer = null;
+	/// <summary>
+	/// Establishes an <see cref="IAdornmentLayer"/> to place the adornment on and exports the <see cref="IWpfTextViewCreationListener"/>
+	/// that instantiates the adornment on the event of a <see cref="IWpfTextView"/>'s creation
+	/// </summary>
+	[Export(typeof(IWpfTextViewConnectionListener))]
+	[ContentType("text")]
+	[TextViewRole(PredefinedTextViewRoles.Document)]
+	internal sealed class InstantVisualStudioFactory : IWpfTextViewConnectionListener
+	{
+		/// <summary>
+		/// Defines the adornment layer for the adornment. This layer is ordered
+		/// after the selection layer in the Z-order
+		/// </summary>
+		[Export(typeof(AdornmentLayerDefinition))]
+		[Name("Instant.VisualStudio")]
+		[Order(After = PredefinedAdornmentLayers.Text, Before = PredefinedAdornmentLayers.Caret)]
+		public AdornmentLayerDefinition editorAdornmentLayer = null;
 
-        /// <summary>
-        /// Instantiates a Instant.VisualStudio manager when a textView is created.
-        /// </summary>
-        /// <param name="textView">The <see cref="IWpfTextView"/> upon which the adornment should be placed</param>
-        public void TextViewCreated(IWpfTextView textView)
-        {
-            new InstantVisualStudio (textView);
-        }
-    }
+		public void SubjectBuffersConnected (IWpfTextView textView, ConnectionReason reason, Collection<ITextBuffer> subjectBuffers)
+		{
+			if (reason != ConnectionReason.TextViewLifetime)
+				return;
+
+			instants.Add (textView, new InstantVisualStudio (textView));
+		}
+
+		public void SubjectBuffersDisconnected (IWpfTextView textView, ConnectionReason reason, Collection<ITextBuffer> subjectBuffers)
+		{
+			if (reason != ConnectionReason.TextViewLifetime)
+				return;
+
+			InstantVisualStudio instant;
+			if (this.instants.TryGetValue (textView, out instant))
+				instant.Dispose();
+		}
+
+		private readonly Dictionary<IWpfTextView, InstantVisualStudio> instants = new Dictionary<IWpfTextView, InstantVisualStudio>();
+	}
 }
