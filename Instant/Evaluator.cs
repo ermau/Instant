@@ -159,7 +159,7 @@ namespace Instant
 					CSharpCodeProvider provider = new CSharpCodeProvider();
 					CompilerResults results = provider.CompileAssemblyFromSource (cparams, sources.ToArray());
 					if (results.Errors.HasErrors)
-						return;
+						continue;
 
 					DomainEvaluator domainEvaluator = (DomainEvaluator)evalDomain.CreateInstanceAndUnwrap ("Instant", "Instant.Evaluator+DomainEvaluator");
 					domainEvaluator.Evaluate (next, cparams, sources.ToArray());
