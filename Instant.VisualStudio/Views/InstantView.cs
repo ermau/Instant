@@ -34,7 +34,7 @@ namespace Instant.VisualStudio
 		}
 
 		public static readonly DependencyProperty FontFamilyProperty =
-			DependencyProperty.Register ("FontFamily", typeof (FontFamily), typeof (InstantView), new PropertyMetadata (default(FontFamily)));
+			DependencyProperty.Register ("FontFamily", typeof (FontFamily), typeof (InstantView), new PropertyMetadata (new FontFamily ("GlobalMonospace.CompositeFont")));
 
 		public FontFamily FontFamily
 		{
