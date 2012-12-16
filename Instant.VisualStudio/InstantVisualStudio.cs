@@ -306,10 +306,11 @@ namespace Instant.VisualStudio
 					if (cancelToken.IsCancellationRequested)
 						return;
 
-					ITextSnapshotLine line = snapshot.GetLineFromLineNumber (m.StartLocation.Line - 1);
+					ITextSnapshotLine startLine = snapshot.GetLineFromLineNumber (m.StartLocation.Line - 1);
+					ITextSnapshotLine endLine = snapshot.GetLineFromLineNumber (m.EndLocation.Line - 1);
 					
 					// TODO: Fix this for multi-line method signatures
-					string methodSignature = line.GetText();
+					string methodSignature = startLine.GetText();
 					if (this.context != null && methodSignature != this.context.MethodSignature)
 						continue;
 
@@ -320,7 +321,7 @@ namespace Instant.VisualStudio
 						if (cancelToken.IsCancellationRequested)
 							return;
 
-						Span methodSpan = Span.FromBounds (line.Start.Position, line.End.Position);
+						Span methodSpan = Span.FromBounds (startLine.Start.Position, endLine.End.Position);
 						ITrackingSpan tracking;
 						
 						Button button = FindAdorner<Button> (methodSpan, this.view.TextSnapshot, out tracking);
@@ -357,7 +358,7 @@ namespace Instant.VisualStudio
 							button.Content = "Stop Instant";
 						}
 
-						SnapshotSpan span = new SnapshotSpan (this.view.TextSnapshot, line.Start, line.Length);
+						SnapshotSpan span = new SnapshotSpan (this.view.TextSnapshot, startLine.Start, startLine.Length);
 
 						Geometry g = this.view.TextViewLines.GetMarkerGeometry (span, true, new Thickness());
 						if (g != null)
