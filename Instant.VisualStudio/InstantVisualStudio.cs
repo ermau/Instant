@@ -59,6 +59,13 @@ namespace Instant.VisualStudio
 
 			this.evaluator.EvaluationCompleted += OnEvaluationCompleted;
 			this.evaluator.Start();
+
+			this.dte.Events.BuildEvents.OnBuildProjConfigDone += OnBuildProjeConfigDone;
+			this.dte.Events.BuildEvents.OnBuildDone += OnBuildDone;
+			this.dte.Events.BuildEvents.OnBuildBegin += OnBuildBegin;
+
+			// HACK: Are we sure that it'll be the active document when created?
+			this.document = this.dte.ActiveDocument;
 		}
 
 		public void Dispose()
@@ -69,6 +76,8 @@ namespace Instant.VisualStudio
 
 			this.evaluator.Dispose();
 		}
+
+		private Document document;
 
 		private readonly Evaluator evaluator = new Evaluator();
 
@@ -93,6 +102,27 @@ namespace Instant.VisualStudio
 
 		private readonly BidirectionalDictionary<ITrackingSpan, FrameworkElement> adorners = new BidirectionalDictionary<ITrackingSpan, FrameworkElement>();
 		private readonly _DTE dte = (_DTE)Package.GetGlobalService (typeof (DTE));
+		
+		private bool buildSuccess;
+		private void OnBuildBegin (vsBuildScope scope, vsBuildAction action)
+		{
+			this.buildSuccess = true;
+		}
+
+		private void OnBuildDone (vsBuildScope scope, vsBuildAction action)
+		{
+			if (this.context == null || !this.buildSuccess)
+				return;
+
+			var cancel = GetCancelSource();
+			Execute (this.view.TextSnapshot, cancel.Token);
+		}
+
+		private void OnBuildProjeConfigDone (string project, string projectConfig, string platform, string solutionConfig, bool success)
+		{
+			if (this.buildSuccess)
+				this.buildSuccess = success;
+		}
 
 		/// <summary>
 		/// On layout change add the adornment to any reformatted lines
@@ -435,7 +465,7 @@ namespace Instant.VisualStudio
 			Project instantProject = new Project();
 			instantProject.Sources.Add (Either<FileInfo, string>.B (code));
 
-			Document currentDoc = dte.ActiveDocument;
+			Document currentDoc = this.document;
 
 			Solution solution = dte.Solution;
 
