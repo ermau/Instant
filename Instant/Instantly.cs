@@ -16,19 +16,10 @@
 // limitations under the License.
 
 using System;
-using System.CodeDom.Compiler;
-using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Reflection;
-using System.Runtime.Remoting;
-using System.Threading;
 using System.Threading.Tasks;
-using Cadenza;
 using ICSharpCode.NRefactory.CSharp;
 using ICSharpCode.NRefactory.TypeSystem;
-using Instant.Operations;
-using Microsoft.CSharp;
 
 namespace Instant
 {

@@ -25,7 +25,6 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using ICSharpCode.NRefactory.CSharp;
-using Instant.Operations;
 using Instant.Standalone.Adorners;
 
 namespace Instant.Standalone

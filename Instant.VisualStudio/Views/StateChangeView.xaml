@@ -1,19 +1,20 @@
-﻿<Views:InstantView x:Class="Instant.VisualStudio.Views.StateChangeView"
+﻿<VS:InstantView x:Class="Instant.VisualStudio.StateChangeView"
 	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
 	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
 	xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
-	xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:Views="clr-namespace:Instant.VisualStudio.Views"
+	xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+	xmlns:VS="clr-namespace:Instant.VisualStudio"
 	mc:Ignorable="d" x:Name="state"
 	BorderThickness="1" Padding="2,0,2,0">
 
-	<Views:InstantView.Resources>
+	<VS:InstantView.Resources>
 		<Style TargetType="TextBlock">
 			<Setter Property="FontFamily" Value="{Binding FontFamily,ElementName=state}" />
 			<Setter Property="FontSize" Value="{Binding FontSize,ElementName=state}" />
 			<Setter Property="Foreground" Value="{Binding Foreground,ElementName=state}" />
 			<Setter Property="VerticalAlignment" Value="Center" />
 		</Style>
-	</Views:InstantView.Resources>
+	</VS:InstantView.Resources>
 	
 	<Grid VerticalAlignment="Center">
 		<Grid.ColumnDefinitions>
@@ -24,8 +25,8 @@
 
 		<TextBlock Grid.Column="0" Text="{Binding StateChange.Variable}" />
 			
-		<Rectangle Grid.Column="1" Height="Auto" Width="1" Fill="{Binding BorderBrush,RelativeSource={RelativeSource FindAncestor,AncestorType=Views:InstantView}}" />
+		<Rectangle Grid.Column="1" Height="Auto" Width="1" Fill="{Binding BorderBrush,RelativeSource={RelativeSource FindAncestor,AncestorType=VS:InstantView}}" />
 
 		<TextBlock Grid.Column="2" Text="{Binding StateChange.Value}" />
 	</Grid>
-</Views:InstantView>
+</VS:InstantView>

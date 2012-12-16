@@ -17,7 +17,7 @@
 
 using System.Diagnostics;
 
-namespace Instant.Operations
+namespace Instant
 {
 	[DebuggerDisplay ("[{Id}] {Variable} = {Value}")]
 	public class StateChange

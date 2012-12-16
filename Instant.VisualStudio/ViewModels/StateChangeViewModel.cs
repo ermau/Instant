@@ -15,9 +15,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using Instant.Operations;
-
-namespace Instant.VisualStudio.ViewModels
+namespace Instant.VisualStudio
 {
 	public class StateChangeViewModel
 		: OperationViewModel

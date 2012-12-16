@@ -16,8 +16,6 @@
 // limitations under the License.
 
 using System;
-using System.Threading;
-using Instant.Operations;
 
 namespace Instant
 {

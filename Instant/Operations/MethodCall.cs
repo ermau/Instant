@@ -17,7 +17,7 @@
 
 using System.Collections.Generic;
 
-namespace Instant.Operations
+namespace Instant
 {
 	public class MethodCall
 		: OperationContainer

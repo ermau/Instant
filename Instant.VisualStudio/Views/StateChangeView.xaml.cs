@@ -1,4 +1,4 @@
-﻿namespace Instant.VisualStudio.Views
+﻿namespace Instant.VisualStudio
 {
 	/// <summary>
 	/// Interaction logic for StateChangeView.xaml

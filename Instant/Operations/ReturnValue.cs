@@ -17,7 +17,7 @@
 
 using System.Diagnostics;
 
-namespace Instant.Operations
+namespace Instant
 {
 	[DebuggerDisplay ("return {Value}")]
 	public class ReturnValue

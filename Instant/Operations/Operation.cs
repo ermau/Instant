@@ -17,7 +17,7 @@
 
 using System;
 
-namespace Instant.Operations
+namespace Instant
 {
 	public abstract class Operation
 		: MarshalByRefObject

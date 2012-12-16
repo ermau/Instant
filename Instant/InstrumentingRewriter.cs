@@ -17,7 +17,6 @@
 
 using System;
 using System.Collections.Generic;
-using ICSharpCode.NRefactory;
 using ICSharpCode.NRefactory.CSharp;
 
 namespace Instant

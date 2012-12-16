@@ -19,7 +19,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 
-namespace Instant.VisualStudio.Views
+namespace Instant.VisualStudio
 {
 	public class InstantView
 		: Border
