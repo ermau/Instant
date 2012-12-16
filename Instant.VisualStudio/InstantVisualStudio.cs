@@ -431,9 +431,6 @@ namespace Instant.VisualStudio
 				if (!lineMap.TryGetValue (operation.Id, out line))
 					continue;
 
-				if (this.view.TextViewLines.FormattedSpan.Snapshot.Version.VersionNumber > line.Extent.Snapshot.Version.VersionNumber)
-					continue;
-
 				Geometry g = this.view.TextViewLines.GetMarkerGeometry (line.Extent);
 				if (g == null)
 					continue;
