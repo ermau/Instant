@@ -24,7 +24,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Cadenza;
 using Instant.Operations;
-using Roslyn.Compilers.CSharp;
 
 namespace Instant.Standalone
 {
@@ -240,30 +239,6 @@ namespace Instant.Standalone
 				Debug = instrumented;
 
 			this.evaluator.PushSubmission (s);
-		}
-
-		private void LogSyntaxTree (SyntaxNode node)
-		{
-			var builder = new StringBuilder();
-			LogSyntaxTree (node, builder, skipSelf: true);
-
-			this.Debug = builder.ToString();
-		}
-
-		private void LogSyntaxTree (SyntaxNode node, StringBuilder builder, int ident = 0, bool skipSelf = false)
-		{
-			string sident = String.Empty;
-			for (int i = 0; i < ident; ++i)
-				sident += "\t";
-
-			if (!skipSelf)
-			{
-				builder.AppendLine (sident + node.GetType() + ": " + node);
-				ident++;
-			}
-
-			foreach (SyntaxNode childNode in node.ChildNodes())
-				LogSyntaxTree (childNode, builder, ident);
 		}
 	}
 }
