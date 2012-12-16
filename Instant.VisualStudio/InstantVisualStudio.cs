@@ -537,7 +537,7 @@ namespace Instant.VisualStudio
 			if (this.context == null || this.context.LastData == null)
 				return;
 
-			AdornCode (snapshot, this.context.Span.GetText (snapshot), this.context.LastData, token);
+			AdornCode (snapshot, snapshot.GetText(), this.context.LastData, token);
 		}
 
 		private void AdornCode (ITextSnapshot snapshot, string code, IDictionary<int, MethodCall> methods, CancellationToken cancelToken = default(CancellationToken))
