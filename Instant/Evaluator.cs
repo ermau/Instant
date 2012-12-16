@@ -37,12 +37,18 @@ namespace Instant
 		public void Start()
 		{
 			this.running = true;
-			new Thread (EvaluatorRunner).Start();
+			new Thread (EvaluatorRunner)
+			{
+				Name = "Evaluator"
+			}.Start();
 		}
 
 		public void PushSubmission (Submission submission)
 		{
-			Interlocked.Exchange (ref this.nextSubmission, submission);
+			Submission bumped = Interlocked.Exchange (ref this.nextSubmission, submission);
+			if (bumped != null)
+				bumped.Cancel();
+
 			this.submissionWait.Set();
 		}
 
@@ -66,6 +72,8 @@ namespace Instant
 				this.submissionWait.WaitOne();
 
 				Submission next = Interlocked.Exchange (ref this.nextSubmission, null);
+				if (next == null)
+					continue;
 
 				AppDomain evalDomain = null;
 				try
