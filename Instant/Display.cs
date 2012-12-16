@@ -107,15 +107,24 @@ namespace Instant
 			if (value == null)
 				return "null";
 			if (value is string)
-				return "\"" + value + "\"";
+				return "\"" + TrimTo (value, 100) + "\"";
 			if (value is char)
-				return "'" + value + "'";
+				return "'" + TrimTo (value, 100) + "'";
 
 			Type t = value.GetType();
 			if (t.IsArray)
 				return GetStringForArray (value);
 
-			return value.ToString();
+			return TrimTo (value, 100);
+		}
+
+		private static string TrimTo (object value, int max)
+		{
+			string str = value.ToString();
+			if (str.Length > max)
+				str = str.Substring (0, max);
+
+			return str;
 		}
 
 		private static string GetStringForArray (object array)
