@@ -29,7 +29,7 @@ namespace Instant.VisualStudio
 	/// that instantiates the adornment on the event of a <see cref="IWpfTextView"/>'s creation
 	/// </summary>
 	[Export(typeof(IWpfTextViewConnectionListener))]
-	[ContentType("text")]
+	[ContentType("CSharp")]
 	[TextViewRole(PredefinedTextViewRoles.Document)]
 	internal sealed class InstantVisualStudioFactory : IWpfTextViewConnectionListener
 	{
