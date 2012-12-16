@@ -38,6 +38,20 @@ namespace Instant
 			Submission = submission;
 		}
 
+		public EvaluationCompletedEventArgs (Exception exception)
+		{
+			if (exception == null)
+				throw new ArgumentNullException ("exception");
+
+			Exception = exception;
+		}
+
+		public Exception Exception
+		{
+			get;
+			private set;
+		}
+
 		public Submission Submission
 		{
 			get;
@@ -147,16 +161,14 @@ namespace Instant
 					if (results.Errors.HasErrors)
 						return;
 
-					try
-					{
-						DomainEvaluator domainEvaluator = (DomainEvaluator)evalDomain.CreateInstanceAndUnwrap ("Instant", "Instant.Evaluator+DomainEvaluator");
-						domainEvaluator.Evaluate (next, cparams, sources.ToArray());
-					}
-					catch (OperationCanceledException)
-					{
-					}
+					DomainEvaluator domainEvaluator = (DomainEvaluator)evalDomain.CreateInstanceAndUnwrap ("Instant", "Instant.Evaluator+DomainEvaluator");
+					domainEvaluator.Evaluate (next, cparams, sources.ToArray());
 
 					OnEvaluationCompleted (new EvaluationCompletedEventArgs (next));
+				}
+				catch (Exception ex)
+				{
+					OnEvaluationCompleted (new EvaluationCompletedEventArgs (ex));
 				}
 				finally
 				{
