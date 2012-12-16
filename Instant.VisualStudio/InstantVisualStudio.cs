@@ -385,7 +385,7 @@ namespace Instant.VisualStudio
 			{
 				if (this.context.LineMap == null)
 				{
-					if ((this.context.LineMap = ConstructLineMap (snapshot, cancelToken, code)) == null)
+					if ((this.context.LineMap = ConstructLineMap (this.view.TextSnapshot, cancelToken, code)) == null)
 						return;
 				}
 
