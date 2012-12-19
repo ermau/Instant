@@ -226,6 +226,11 @@ namespace Instant.VisualStudio
 
 		private void OnEvaluationCompleted (object sender, EvaluationCompletedEventArgs e)
 		{
+			if (e.Exception != null)
+			{
+				return;
+			}
+
 			var sink = (MemoryInstrumentationSink)e.Submission.Sink;
 
 			var methods = sink.GetRootCalls() ?? this.context.LastData;

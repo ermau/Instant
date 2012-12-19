@@ -162,13 +162,11 @@ namespace Instant
 						continue;
 
 					DomainEvaluator domainEvaluator = (DomainEvaluator)evalDomain.CreateInstanceAndUnwrap ("Instant", "Instant.Evaluator+DomainEvaluator");
-					domainEvaluator.Evaluate (next, cparams, sources.ToArray());
-
-					OnEvaluationCompleted (new EvaluationCompletedEventArgs (next));
-				}
-				catch (Exception ex)
-				{
-					OnEvaluationCompleted (new EvaluationCompletedEventArgs (ex));
+					Exception ex = domainEvaluator.Evaluate (next, cparams, sources.ToArray());
+					if (ex == null)
+						OnEvaluationCompleted (new EvaluationCompletedEventArgs (next));
+					else
+						OnEvaluationCompleted (new EvaluationCompletedEventArgs (ex));
 				}
 				finally
 				{
@@ -185,16 +183,16 @@ namespace Instant
 		private class DomainEvaluator
 			: MarshalByRefObject
 		{
-			public void Evaluate (Submission submission, CompilerParameters cparams, string[] sources)
+			public Exception Evaluate (Submission submission, CompilerParameters cparams, string[] sources)
 			{
 				CSharpCodeProvider provider = new CSharpCodeProvider();
 				CompilerResults results = provider.CompileAssemblyFromSource (cparams, sources);
 				if (results.Errors.HasErrors)
-					return;
+					return null;
 
 				MethodInfo method = results.CompiledAssembly.GetType ("Instant.User.Evaluation").GetMethod ("Evaluate", BindingFlags.NonPublic | BindingFlags.Static);
 				if (method == null)
-					return;
+					return new InvalidOperationException ("Evaluation method not found");
 
 				Hook.LoadSubmission (submission);
 
@@ -205,6 +203,12 @@ namespace Instant
 				catch (OperationCanceledException)
 				{
 				}
+				catch (Exception ex)
+				{
+					return ex;
+				}
+
+				return null;
 			}
 		}
 
