@@ -121,7 +121,7 @@ namespace Instant.VisualStudio
 				return;
 
 			Span currentSpan = this.context.Span.GetSpan (e.NewSnapshot);
-			if (!e.NewOrReformattedSpans.Any (s => currentSpan.Contains (s)))
+			if (!e.NewOrReformattedSpans.Any (s => currentSpan.OverlapsWith (s)))
 				return;
 
 			if (this.context.Version != e.NewSnapshot.Version) // Text changed
