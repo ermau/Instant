@@ -86,7 +86,7 @@ namespace Instant.VisualStudio
 			public ITextVersion Version;
 			public string TestCode;
 			public IDictionary<int, MethodCall> LastData;
-			public IDictionary<int, ITextSnapshotLine> LineMap;
+			public LineMap LineMap;
 		}
 
 		private readonly _DTE dte = (_DTE)Package.GetGlobalService (typeof (DTE));
@@ -271,13 +271,13 @@ namespace Instant.VisualStudio
 			AdornCode (snapshot, snapshot.GetText(), this.context.LastData, token);
 		}
 
-		private void AdornCode (ITextSnapshot snapshot, string code, IDictionary<int, MethodCall> methods, CancellationToken cancelToken = default(CancellationToken))
+		private async Task AdornCode (ITextSnapshot snapshot, string code, IDictionary<int, MethodCall> methods, CancellationToken cancelToken = default(CancellationToken))
 		{
 			try
 			{
 				if (this.context.LineMap == null)
 				{
-					if ((this.context.LineMap = ConstructLineMap (this.view.TextSnapshot, cancelToken, code)) == null)
+					if ((this.context.LineMap = await LineMap.ConstructAsync (snapshot, code, cancelToken)) == null)
 						return;
 				}
 
@@ -297,33 +297,16 @@ namespace Instant.VisualStudio
 			}
 		}
 
-		private Dictionary<int, ITextSnapshotLine> ConstructLineMap (ITextSnapshot snapshot, CancellationToken cancelToken, string code)
-		{
-			var tree = SyntaxTree.Parse (code, cancellationToken: cancelToken);
-			var identifier = new IdentifyingVisitor();
-			tree.AcceptVisitor (identifier);
-
-			var lineMap = identifier.LineMap.ToDictionary (
-				kvp => kvp.Key,
-				kvp => snapshot.GetLineFromLineNumber (kvp.Value - 1) // VS lines are 0 based
-				);
-
-			if (lineMap.Count == 0)
-				return null;
-
-			return lineMap;
-		}
-
 		private readonly Dictionary<Type, ViewCache> views = new Dictionary<Type, ViewCache>();
-		private void AdornOperationContainer (OperationContainer container, ITextSnapshot snapshot, IDictionary<int, ITextSnapshotLine> lineMap, CancellationToken cancelToken)
+		private void AdornOperationContainer (OperationContainer container, ITextSnapshot snapshot, LineMap lineMap, CancellationToken cancelToken)
 		{
 			foreach (Operation operation in container.Operations)
 			{
-				ITextSnapshotLine line;
-				if (!lineMap.TryGetValue (operation.Id, out line))
+				SnapshotSpan span;
+				if (!lineMap.TryGetSpan (this.view.TextSnapshot, operation.Id, out span))
 					continue;
 
-				Geometry g = this.view.TextViewLines.GetMarkerGeometry (line.Extent);
+				Geometry g = this.view.TextViewLines.GetMarkerGeometry (span);
 				if (g == null)
 					continue;
 
@@ -365,7 +348,7 @@ namespace Instant.VisualStudio
 
 					if (!preexisted)
 					{
-						loopModel.IterationChanged += (sender, args) =>
+						loopModel.IterationChanged += async (sender, args) =>
 						{
 							LoopIteration iteration = args.PreviousIteration;
 							if (iteration != null)
@@ -384,10 +367,9 @@ namespace Instant.VisualStudio
 							}
 
 							ITextSnapshot s = this.view.TextSnapshot;
-							var map = this.context.LineMap ?? ConstructLineMap (this.view.TextSnapshot, GetCancelSource (current: true).Token, this.context.Span.GetText(s));
 
+							var map = this.context.LineMap ?? await LineMap.ConstructAsync (this.view.TextSnapshot, this.context.Span.GetText (s), GetCancelSource (current: true).Token);
 							AdornOperationContainer (args.NewIteration, s, map, GetCancelSource (current: true).Token);
-							//AdornCode (this.view.TextSnapshot, GetCancelSource (current: true).Token);
 						};
 					}
 
@@ -401,7 +383,7 @@ namespace Instant.VisualStudio
 				adorner.MaxHeight = g.Bounds.Height - 2;
 
 				if (!preexisted)
-					this.layer.AddAdornment (AdornmentPositioningBehavior.TextRelative, line.Extent, null, adorner, OperationAdornerRemoved);
+					this.layer.AddAdornment (AdornmentPositioningBehavior.TextRelative, span, null, adorner, OperationAdornerRemoved);
 			}
 		}
 

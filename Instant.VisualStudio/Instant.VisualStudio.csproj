@@ -143,6 +143,7 @@
     <Compile Include="Views\StateChangeView.xaml.cs">
       <DependentUpon>StateChangeView.xaml</DependentUpon>
     </Compile>
+    <Compile Include="LineMap.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
