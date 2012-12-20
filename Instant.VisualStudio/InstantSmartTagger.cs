@@ -104,11 +104,14 @@ namespace Instant.VisualStudio
 				this.spans[trackingNameSpan] = trackingTagSpan;
 			}
 
-			// Remove the remaining spans which are now invalid
-			foreach (SnapshotSpan snapshotSpan in currentSpans)
+			// Remove any empty spans, they've been deleted
+			foreach (var kvp in this.spans.Where (kvp => kvp.Key.GetSpan (snapshot).IsEmpty).ToArray())
 			{
-				foreach (var kvp in this.spans.Where (kvp => kvp.Key.GetSpan (snapshot).OverlapsWith (snapshotSpan)))
-					RemoveTagSpan (kvp.Value);
+				foreach (IDisposable disposable in kvp.Value.Tag.ActionSets.SelectMany (s => s.Actions).OfType<IDisposable>())
+					disposable.Dispose();
+
+				RemoveTagSpan (kvp.Value);
+				this.spans.Remove (kvp.Key);
 			}
 		}
 	}

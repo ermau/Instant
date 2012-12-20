@@ -182,6 +182,9 @@ namespace Instant.VisualStudio
 		public void Dispose()
 		{
 			Toggled -= OnGlobalToggled;
+
+			if (IsRunning)
+				Invoke();
 		}
 
 		private void OnGlobalToggled (object sender, InstantToggleEventArgs args)
