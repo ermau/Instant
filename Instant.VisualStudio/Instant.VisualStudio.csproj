@@ -147,7 +147,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
-    <None Include="source.extension.vsixmanifest">
+    <None Include="extension.vsixmanifest">
       <SubType>Designer</SubType>
     </None>
   </ItemGroup>
