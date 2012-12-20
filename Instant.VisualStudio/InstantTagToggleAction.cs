@@ -97,9 +97,9 @@ namespace Instant.VisualStudio
 			View = view;
 			ExampleCode = exampleCode;
 			MethodSpan = methodSpan;
-			IsEnabled = true;
+			IsEnabled = !isRunning;
 
-			Toggled += OnToggled;
+			Toggled += OnGlobalToggled;
 		}
 
 		public ITextView View
@@ -169,8 +169,11 @@ namespace Instant.VisualStudio
 			private set;
 		}
 
+		private static bool isRunning = false;
 		private void OnToggled (InstantToggleEventArgs args)
 		{
+			isRunning = args.IsRunning;
+
 			var handler = Toggled;
 			if (handler != null)
 				handler (this, args);
@@ -178,10 +181,10 @@ namespace Instant.VisualStudio
 
 		public void Dispose()
 		{
-			Toggled -= OnToggled;
+			Toggled -= OnGlobalToggled;
 		}
 
-		private void OnToggled (object sender, InstantToggleEventArgs args)
+		private void OnGlobalToggled (object sender, InstantToggleEventArgs args)
 		{
 			if (args.View != View || sender == this)
 				return;
