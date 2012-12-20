@@ -37,17 +37,9 @@ namespace Instant.VisualStudio
 
 			Solution solution = dte.Solution;
 
-			foreach (EnvDTE.Project project in solution.Projects)
-			{
-				Configuration config = project.ConfigurationManager.ActiveConfiguration;
-				if (!config.IsBuildable || currentDoc.ProjectItem.ContainingProject != project)
-					continue;
-
-				VSProject vsproj = (VSProject)project.Object;
-
-				AddFiles (instantProject, project.ProjectItems, currentDoc);
-				AddReferences (instantProject, vsproj.References);
-			}
+			EnvDTE.Project project = currentDoc.ProjectItem.ContainingProject;
+			AddFiles (instantProject, project.ProjectItems, currentDoc);
+			AddReferences (instantProject, ((VSProject)project.Object).References);
 
 			return instantProject;
 		}
