@@ -16,6 +16,7 @@
 // limitations under the License.
 
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using ICSharpCode.NRefactory.CSharp;
@@ -52,32 +53,42 @@ namespace Instant.VisualStudio
 
 		private ITextVersion lastVersion;
 
+		private readonly Dictionary<ITrackingSpan, TrackingTagSpan<SmartTag>> spans = new Dictionary<ITrackingSpan, TrackingTagSpan<SmartTag>>();
+
 		private void OnLayoutChanged (object sender, TextViewLayoutChangedEventArgs args)
 		{
 			ITextSnapshot snapshot = args.NewSnapshot;
-			if (this.lastVersion == null)
-				this.lastVersion = snapshot.Version;
-			else if (this.lastVersion == snapshot.Version)
+			if (this.lastVersion == snapshot.Version)
 				return;
 
-			// Clear old spans
-			RemoveTagSpans (s => true);
-
+			this.lastVersion = snapshot.Version;
 			string code = snapshot.GetText();
 
 			SyntaxTree tree = SyntaxTree.Parse (code);
 			if (tree.Errors.Any (e => e.ErrorType == ErrorType.Error))
 				return;
 
+			List<SnapshotSpan> currentSpans = new List<SnapshotSpan> (this.spans.Keys.Select (t => t.GetSpan (args.NewSnapshot)));
+
 			foreach (MethodDeclaration method in tree.Descendants.OfType<MethodDeclaration>())
 			{
 				ITextSnapshotLine nameLine = snapshot.GetLineFromLineNumber (method.NameToken.StartLocation.Line - 1);
-				ITextSnapshotLine startLine = snapshot.GetLineFromLineNumber (method.StartLocation.Line);
-				ITextSnapshotLine endLine = snapshot.GetLineFromLineNumber (method.EndLocation.Line);
-
 				int pos = nameLine.Start.Position + method.NameToken.StartLocation.Column - 1;
 
-				ITrackingSpan nameSpan = snapshot.CreateTrackingSpan (pos, method.Name.Length, SpanTrackingMode.EdgeExclusive);
+				SnapshotSpan nameSpan = new SnapshotSpan (snapshot, pos, method.Name.Length);
+				SnapshotSpan overlapped = currentSpans.FirstOrDefault (ss => ss.OverlapsWith (nameSpan));
+
+				// If the method is already being tracked, VS will handle it.
+				if (overlapped != default(SnapshotSpan))
+				{
+					currentSpans.Remove (overlapped);
+					continue;
+				}
+
+				ITrackingSpan trackingNameSpan = snapshot.CreateTrackingSpan (nameSpan, SpanTrackingMode.EdgeExclusive);
+				
+				ITextSnapshotLine startLine = snapshot.GetLineFromLineNumber (method.StartLocation.Line);
+				ITextSnapshotLine endLine = snapshot.GetLineFromLineNumber (method.EndLocation.Line);
 				ITrackingSpan methodSpan = snapshot.CreateTrackingSpan (Span.FromBounds (startLine.Start.Position, endLine.End.Position), SpanTrackingMode.EdgeExclusive);
 
 				var actionSets = new ReadOnlyCollection<SmartTagActionSet> (new[]
@@ -88,7 +99,16 @@ namespace Instant.VisualStudio
 					})),
 				});
 
-				CreateTagSpan (nameSpan, new SmartTag (SmartTagType.Factoid, actionSets));
+				var tag = new SmartTag (SmartTagType.Factoid, actionSets);
+				TrackingTagSpan<SmartTag> trackingTagSpan = CreateTagSpan (trackingNameSpan, tag);
+				this.spans[trackingNameSpan] = trackingTagSpan;
+			}
+
+			// Remove the remaining spans which are now invalid
+			foreach (SnapshotSpan snapshotSpan in currentSpans)
+			{
+				foreach (var kvp in this.spans.Where (kvp => kvp.Key.GetSpan (snapshot).OverlapsWith (snapshotSpan)))
+					RemoveTagSpan (kvp.Value);
 			}
 		}
 	}
