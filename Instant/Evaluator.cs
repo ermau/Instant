@@ -95,6 +95,17 @@ namespace Instant
 
 		private readonly string RefPath = Path.Combine (Environment.GetFolderPath (Environment.SpecialFolder.ProgramFiles), "Reference Assemblies");
 
+		static Evaluator()
+		{
+			AppDomain.CurrentDomain.AssemblyResolve += (sender, args) =>
+			{
+				if (args.Name.StartsWith ("Instant"))
+					return typeof (Instantly).Assembly;
+
+				return args.RequestingAssembly;
+			};
+		}
+
 		private void EvaluatorRunner()
 		{
 			while (this.running)

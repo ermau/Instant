@@ -25,17 +25,6 @@ namespace Instant
 {
 	public static class Instantly
 	{
-		static Instantly()
-		{
-			AppDomain.CurrentDomain.AssemblyResolve += (sender, args) =>
-			{
-				if (args.Name.StartsWith ("Instant"))
-					return typeof (Instantly).Assembly;
-
-				return args.RequestingAssembly;
-			};
-		}
-
 		/// <summary>
 		/// Instruments the supplied code to call the <see cref="Hook"/> methods.
 		/// </summary>
