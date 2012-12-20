@@ -118,6 +118,9 @@ namespace Instant
 				case "char":
 					return "'a'";
 				
+				case "bool":
+					return "true";
+
 				case "uint":
 				case "int":
 				case "ushort":
