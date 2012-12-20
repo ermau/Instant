@@ -72,6 +72,9 @@ namespace Instant.VisualStudio
 
 			foreach (MethodDeclaration method in tree.Descendants.OfType<MethodDeclaration>())
 			{
+				if (method.HasModifier (Modifiers.Abstract) || method.HasModifier (Modifiers.Extern))
+					continue;
+
 				ITextSnapshotLine nameLine = snapshot.GetLineFromLineNumber (method.NameToken.StartLocation.Line - 1);
 				int pos = nameLine.Start.Position + method.NameToken.StartLocation.Column - 1;
 
