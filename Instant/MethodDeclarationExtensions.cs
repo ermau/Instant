@@ -138,6 +138,9 @@ namespace Instant
 				case "string":
 					return "\"test\"";
 
+				case "object":
+					return "null";
+
 				default:
 					throw new ArgumentException();
 			}
