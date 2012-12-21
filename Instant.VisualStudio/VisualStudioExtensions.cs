@@ -16,7 +16,6 @@
 // limitations under the License.
 
 using System;
-using System.Collections.Generic;
 using System.IO;
 using Cadenza;
 using EnvDTE;
@@ -35,9 +34,14 @@ namespace Instant.VisualStudio
 			Project instantProject = new Project();
 			instantProject.Sources.Add (Either<FileInfo, string>.B (code));
 
-			Solution solution = dte.Solution;
-
 			EnvDTE.Project project = currentDoc.ProjectItem.ContainingProject;
+
+			EnvDTE.Properties properties = project.ConfigurationManager.ActiveConfiguration.Properties;
+
+			instantProject.DefinedConstants = (string)properties.Item ("DefineConstants").Value;
+			instantProject.AllowUnsafe = (bool)properties.Item ("AllowUnsafeBlocks").Value;
+			instantProject.Optimize = (bool)properties.Item ("Optimize").Value;
+
 			AddFiles (instantProject, project.ProjectItems, currentDoc);
 			AddReferences (instantProject, ((VSProject)project.Object).References);
 
