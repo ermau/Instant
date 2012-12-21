@@ -34,6 +34,9 @@ namespace Instant
 	{
 		public static string Object (object value)
 		{
+			if (value == null)
+				return "null";
+
 			return Displayers.GetOrAdd (value.GetType(), CreateDisplay) (value);
 		}
 
