@@ -157,6 +157,7 @@ namespace Instant
 					cparams.IncludeDebugInformation = false;
 					cparams.ReferencedAssemblies.AddRange (references);
 					cparams.ReferencedAssemblies.Add (typeof (Instantly).Assembly.Location);
+					cparams.CompilerOptions = next.Project.GetCompilerOptions();
 
 					// HACK: Wrap test code into a proper method
 					string evalSource = "namespace Instant.User { static class Evaluation { static void Evaluate() {" + next.EvalCode + " } } }";

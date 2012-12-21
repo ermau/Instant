@@ -24,7 +24,19 @@ namespace Instant
 	public class Project
 		: IProject
 	{
-		public string ConditionalCompilationSymbols
+		public string DefinedConstants
+		{
+			get;
+			set;
+		}
+
+		public bool AllowUnsafe
+		{
+			get;
+			set;
+		}
+
+		public bool Optimize
 		{
 			get;
 			set;
