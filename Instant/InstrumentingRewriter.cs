@@ -53,6 +53,15 @@ namespace Instant
 			if (identifier == null)
 				return;
 
+			if (initializer.Initializer == Expression.Null)
+			{
+				AstType type = initializer.PrevSibling as AstType;
+				if (type == null)
+					return;
+
+				initializer.Initializer = new DefaultValueExpression (type.Clone());
+			}
+
 			initializer.Initializer = GetAssignmentExpression (identifier, initializer.Initializer);
 		}
 
