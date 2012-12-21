@@ -18,6 +18,7 @@
 using System;
 using System.CodeDom.Compiler;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -186,7 +187,17 @@ namespace Instant
 					{
 						string dir = evalDomain.BaseDirectory;
 						AppDomain.Unload (evalDomain);
-						Directory.Delete (dir, true);
+						try
+						{
+							Directory.Delete (dir, true);
+						}
+						catch (UnauthorizedAccessException)
+						{
+							// Every now and then we can't delete the directory.
+							// We should try to find out why and fix it,
+							// but in the mean time it's not the end of the world.
+							Trace.WriteLine ("Unable to delete Instant dir " + dir);
+						}
 					}
 				}
 			}
