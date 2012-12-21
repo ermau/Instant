@@ -111,7 +111,7 @@ namespace Instant.VisualStudio
 		public string ExampleCode
 		{
 			get;
-			private set;
+			set;
 		}
 
 		public ITrackingSpan MethodSpan

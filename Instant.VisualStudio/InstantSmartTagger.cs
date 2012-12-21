@@ -68,7 +68,8 @@ namespace Instant.VisualStudio
 			if (tree.Errors.Any (e => e.ErrorType == ErrorType.Error))
 				return;
 
-			List<SnapshotSpan> currentSpans = new List<SnapshotSpan> (this.spans.Keys.Select (t => t.GetSpan (args.NewSnapshot)));
+			List<Tuple<ITrackingSpan, SnapshotSpan>> currentSpans = new List<Tuple<ITrackingSpan, SnapshotSpan>> (
+				this.spans.Keys.Select (t => new Tuple<ITrackingSpan, SnapshotSpan> (t, t.GetSpan (args.NewSnapshot))));
 
 			foreach (MethodDeclaration method in tree.Descendants.OfType<MethodDeclaration>())
 			{
@@ -79,11 +80,15 @@ namespace Instant.VisualStudio
 				int pos = nameLine.Start.Position + method.NameToken.StartLocation.Column - 1;
 
 				SnapshotSpan nameSpan = new SnapshotSpan (snapshot, pos, method.Name.Length);
-				SnapshotSpan overlapped = currentSpans.FirstOrDefault (ss => ss.OverlapsWith (nameSpan));
+				var overlapped = currentSpans.FirstOrDefault (ss => ss.Item2.OverlapsWith (nameSpan));
 
 				// If the method is already being tracked, VS will handle it.
-				if (overlapped != default(SnapshotSpan))
+				if (overlapped != null)
 				{
+					// Update example invocation, signature might have changed
+					InstantTagToggleAction action = this.spans[overlapped.Item1].Tag.ActionSets.SelectMany (s => s.Actions).OfType<InstantTagToggleAction>().Single();
+					action.ExampleCode = method.GetExampleInvocation();
+
 					currentSpans.Remove (overlapped);
 					continue;
 				}
