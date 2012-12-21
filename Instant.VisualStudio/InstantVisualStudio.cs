@@ -35,7 +35,7 @@ namespace Instant.VisualStudio
 	internal sealed class InstantVisualStudio
 		: IDisposable
 	{
-		public InstantVisualStudio (IWpfTextView view)
+		public InstantVisualStudio (IWpfTextView view, ITextDocumentFactoryService textDocumentFactoryService)
 		{
 			this.view = view;
 			this.layer = view.GetAdornmentLayer("Instant.VisualStudio");
@@ -52,8 +52,11 @@ namespace Instant.VisualStudio
 			this.dte.Events.BuildEvents.OnBuildDone += OnBuildDone;
 			this.dte.Events.BuildEvents.OnBuildBegin += OnBuildBegin;
 
-			// HACK: Are we sure that it'll be the active document when created?
-			this.document = this.dte.ActiveDocument;
+			ITextDocument textDocument;
+			if (!textDocumentFactoryService.TryGetTextDocument (view.TextBuffer, out textDocument))
+				throw new InvalidOperationException();
+
+			this.document = this.dte.Documents.OfType<EnvDTE.Document>().FirstOrDefault (d => d.FullName == textDocument.FilePath);
 
 			InstantTagToggleAction.Toggled += OnInstantToggled;
 		}

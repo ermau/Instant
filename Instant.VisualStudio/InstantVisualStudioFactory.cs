@@ -42,12 +42,15 @@ namespace Instant.VisualStudio
 		[Order(After = PredefinedAdornmentLayers.Text, Before = PredefinedAdornmentLayers.Caret)]
 		public AdornmentLayerDefinition editorAdornmentLayer = null;
 
+		[Import]
+		private ITextDocumentFactoryService documentService;
+
 		public void SubjectBuffersConnected (IWpfTextView textView, ConnectionReason reason, Collection<ITextBuffer> subjectBuffers)
 		{
 			if (reason != ConnectionReason.TextViewLifetime)
 				return;
 
-			instants.Add (textView, new InstantVisualStudio (textView));
+			instants.Add (textView, new InstantVisualStudio (textView, this.documentService));
 		}
 
 		public void SubjectBuffersDisconnected (IWpfTextView textView, ConnectionReason reason, Collection<ITextBuffer> subjectBuffers)
