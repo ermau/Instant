@@ -266,7 +266,13 @@ namespace Instant
 					block = new BlockStatement { statement.Clone() };
 			}
 
-			block.InsertBefore (block.FirstChild, GetHookExpression ("BeginInsideLoop", GetSubmissionId(), GetId()));
+			var beginExpression = GetHookExpression ("BeginInsideLoop", GetSubmissionId(), GetId());
+
+			if (block.FirstChild != null)
+				block.InsertBefore (block.FirstChild, beginExpression);
+			else
+				block.Add (beginExpression);
+
 			block.Add (GetHookExpression ("EndInsideLoop", GetSubmissionId(), GetId()));
 
 			return block;
