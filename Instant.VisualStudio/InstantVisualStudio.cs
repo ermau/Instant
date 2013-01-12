@@ -18,14 +18,15 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Threading;
 using EnvDTE;
-using ICSharpCode.NRefactory.CSharp;
 using Microsoft.VisualStudio.Shell;
+using Microsoft.VisualStudio.Shell.Interop;
 using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Text.Editor;
 using Task = System.Threading.Tasks.Task;
@@ -51,6 +52,8 @@ namespace Instant.VisualStudio
 			this.dte.Events.BuildEvents.OnBuildProjConfigDone += OnBuildProjeConfigDone;
 			this.dte.Events.BuildEvents.OnBuildDone += OnBuildDone;
 			this.dte.Events.BuildEvents.OnBuildBegin += OnBuildBegin;
+
+			this.statusbar = (IVsStatusbar)this.serviceProvider.GetService (typeof (IVsStatusbar));
 
 			ITextDocument textDocument;
 			if (!textDocumentFactoryService.TryGetTextDocument (view.TextBuffer, out textDocument))
@@ -92,7 +95,9 @@ namespace Instant.VisualStudio
 			public LineMap LineMap;
 		}
 
+		private readonly IVsStatusbar statusbar;
 		private readonly _DTE dte = (_DTE)Package.GetGlobalService (typeof (DTE));
+		private readonly ServiceProvider serviceProvider = ServiceProvider.GlobalProvider;
 		
 		private bool buildSuccess;
 		private void OnBuildBegin (vsBuildScope scope, vsBuildAction action)
@@ -231,8 +236,17 @@ namespace Instant.VisualStudio
 		{
 			if (e.Exception != null)
 			{
+				Exception ex = e.Exception;
+
+				var target = e.Exception as TargetInvocationException;
+				if (target != null)
+					ex = target.InnerException;
+
+				this.statusbar.SetText (String.Format ("{0}: {1}", ex.GetType().Name, ex.Message));
 				return;
 			}
+
+			this.statusbar.SetText ("Evaluation completed.");
 
 			var sink = (MemoryInstrumentationSink)e.Submission.Sink;
 
@@ -253,6 +267,8 @@ namespace Instant.VisualStudio
 
 		private async Task Execute (ITextSnapshot snapshot, CancellationToken cancelToken)
 		{
+			this.statusbar.SetText ("Evaluating...");
+
 			int id = Interlocked.Increment (ref submissionId);
 
 			string original = snapshot.GetText();
