@@ -272,12 +272,19 @@ namespace Instant.VisualStudio
 			int id = Interlocked.Increment (ref submissionId);
 
 			string original = snapshot.GetText();
-			string code = await Instantly.Instrument (original, id);
+			bool error = false;
+			var result = await Instantly.Instrument (original, id);
+			string text = result.Fold (s => s, e => { error = true; return e.Message; });
 
-			if (cancelToken.IsCancellationRequested || code == null)
+			if (cancelToken.IsCancellationRequested)
 				return;
+			if (error)
+			{
+				this.statusbar.SetText (text);
+				return;
+			}
 
-			IProject project = this.dte.GetProject (this.document, code);
+			IProject project = this.dte.GetProject (this.document, text);
 
 			Submission submission = null;
 			var sink = new MemoryInstrumentationSink (() => submission.IsCanceled);

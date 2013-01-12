@@ -18,6 +18,7 @@
 using System;
 using System.Linq;
 using System.Threading.Tasks;
+using Cadenza;
 using ICSharpCode.NRefactory.CSharp;
 using ICSharpCode.NRefactory.TypeSystem;
 
@@ -32,22 +33,23 @@ namespace Instant
 		/// <param name="submissionId">The submission ID.</param>
 		/// <returns>A task for a <see cref="string"/> representing the instrumented code.</returns>
 		/// <seealso cref="Hook.CreateSubmission"/>
-		public static Task<string> Instrument (string code, int submissionId)
+		public static Task<Either<string, Error>> Instrument (string code, int submissionId)
 		{
 			if (code == null)
 				throw new ArgumentNullException ("code");
 
-			return Task<string>.Factory.StartNew (s =>
+			return Task<Either<string, Error>>.Factory.StartNew (s =>
 			{
 				SyntaxTree tree = SyntaxTree.Parse ((string)s);
 
 				InstrumentingRewriter rewriter = new InstrumentingRewriter (submissionId);
 				tree.AcceptVisitor (rewriter);
 
-				if (tree.Errors.Any (e => e.ErrorType == ErrorType.Error))
-					return null;
+				Error error = tree.Errors.FirstOrDefault (e => e.ErrorType == ErrorType.Error);
+				if (error != null)
+					return Either<string, Error>.B (error);
 
-				return tree.GetText();
+				return Either<string, Error>.A (tree.GetText());
 			}, code);
 		}
 	}

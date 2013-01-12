@@ -23,6 +23,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Cadenza;
+using ICSharpCode.NRefactory.TypeSystem;
 
 namespace Instant.Standalone
 {
@@ -223,7 +224,8 @@ namespace Instant.Standalone
 
 			int id = Interlocked.Increment (ref this.submissionId);
 
-			string instrumented = await Instantly.Instrument (input, id);
+			Either<string, Error> result = await Instantly.Instrument (input, id);
+			string instrumented = result.Fold (i => i, e => null);
 			if (instrumented == null)
 				return;
 
