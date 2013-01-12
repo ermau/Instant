@@ -274,7 +274,13 @@ namespace Instant.VisualStudio
 			string original = snapshot.GetText();
 			bool error = false;
 			var result = await Instantly.Instrument (original, id);
-			string text = result.Fold (s => s, e => { error = true; return e.Message; });
+			string text = result.Fold (
+				s => s,
+				e =>
+				{
+					error = true;
+					return String.Format ("L{0}: {1}", e.Region.BeginLine, e.Message);
+				});
 
 			if (cancelToken.IsCancellationRequested)
 				return;
