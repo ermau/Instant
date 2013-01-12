@@ -283,7 +283,11 @@ namespace Instant.VisualStudio
 				});
 
 			if (cancelToken.IsCancellationRequested)
+			{
+				this.statusbar.SetText ("Evaluation canceled.");
 				return;
+			}
+
 			if (error)
 			{
 				this.statusbar.SetText (text);
