@@ -1,7 +1,7 @@
 ﻿//
 // InstantVisualStudio.cs
 //
-// Copyright 2012 Eric Maupin
+// Copyright 2012-2013 Eric Maupin
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -351,35 +351,11 @@ namespace Instant.VisualStudio
 					var loopModel = (LoopViewModel)model;
 
 					LoopIteration[] iterations = loopModel.Iterations;
-					if (!preexisted || loopModel.Iteration > iterations.Length - 1)
+					if (!preexisted || loopModel.Iteration > iterations.Length)
 						loopModel.Iteration = iterations.Length;
 
 					if (!preexisted)
-					{
-						loopModel.IterationChanged += async (sender, args) =>
-						{
-							LoopIteration iteration = args.PreviousIteration;
-							if (iteration != null)
-							{
-								HashSet<int> removes = new HashSet<int>();
-								foreach (Operation op in iteration.Operations)
-								{
-									if (removes.Contains (op.Id))
-										continue;
-
-									ViewCache cache = this.views[op.GetType()];
-									InstantView opAdorner = cache.GetView (op.Id);
-									if (opAdorner != null)
-										this.layer.RemoveAdornment (opAdorner);
-								}
-							}
-
-							ITextSnapshot s = this.view.TextSnapshot;
-
-							var map = this.context.LineMap ?? await LineMap.ConstructAsync (this.view.TextSnapshot, this.context.Span.GetText (s), GetCancelSource (current: true).Token);
-							AdornOperationContainer (args.NewIteration, s, map, GetCancelSource (current: true).Token);
-						};
-					}
+						loopModel.IterationChanged += OnIterationChanged;
 
 					if (iterations.Length > 0)
 						AdornOperationContainer (iterations[loopModel.Iteration - 1], snapshot, lineMap, cancelToken);
@@ -393,6 +369,32 @@ namespace Instant.VisualStudio
 				if (!preexisted)
 					this.layer.AddAdornment (AdornmentPositioningBehavior.TextRelative, span, null, adorner, OperationAdornerRemoved);
 			}
+		}
+
+		private void OnIterationChanged (object sender, IterationChangedEventArgs args)
+		{
+			LoopIteration iteration = args.PreviousIteration;
+			if (iteration != null)
+			{
+				HashSet<int> removes = new HashSet<int>();
+				foreach (Operation op in iteration.Operations)
+				{
+					if (removes.Contains (op.Id))
+						continue;
+
+					ViewCache cache = this.views[op.GetType()];
+					InstantView opAdorner = cache.GetView (op.Id);
+					if (opAdorner != null)
+						this.layer.RemoveAdornment (opAdorner);
+				}
+			}
+
+			AdornCode (this.view.TextSnapshot, GetCancelSource (current: true).Token);
+
+			//ITextSnapshot s = this.view.TextSnapshot;
+
+			//var map = this.context.LineMap ?? await LineMap.ConstructAsync (this.view.TextSnapshot, this.context.Span.GetText (s), GetCancelSource (current: true).Token);
+			//AdornOperationContainer (args.NewIteration, s, map, GetCancelSource (current: true).Token);
 		}
 
 		private void OperationAdornerRemoved (object tag, UIElement element)

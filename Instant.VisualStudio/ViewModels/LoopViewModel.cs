@@ -97,15 +97,12 @@ namespace Instant.VisualStudio
 		{
 			base.OnOperationChanged();
 
-			LoopIteration piteration = (this.iterations != null && this.iteration > 0) ? this.iterations[this.iteration - 1] : null;
 			this.iterations = Loop.Operations.OfType<LoopIteration>().ToArray();
 
-			this.iteration = this.iterations.Length;
+			if (this.iteration > this.iterations.Length)
+				this.iteration = this.iterations.Length;
+
 			OnPropertyChanged ("Iteration");
-
-			LoopIteration niteration = (this.iterations.Length > 0) ? this.iterations[this.iterations.Length - 1] : null;
-			OnIterationChanged (new IterationChangedEventArgs (piteration, niteration));
-
 			OnPropertyChanged ("TotalIterations");
 			this.adjustIteration.ChangeCanExecute();
 		}
