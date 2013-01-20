@@ -12,6 +12,7 @@ This is mostly undocumented, hack-filled prototype code. You have been warned.
 
 ## Limitations
 
+- Portable library projects are not supported.
 - There is no visualization for multiple threads.
 - Infinite loop detection is not perfect (false positives, false negatives).
 - Visual Studio extension performs poorly (especially when debugging it).
