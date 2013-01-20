@@ -169,11 +169,6 @@ namespace Instant
 
 					sources.Add (evalSource);
 
-					CSharpCodeProvider provider = new CSharpCodeProvider();
-					CompilerResults results = provider.CompileAssemblyFromSource (cparams, sources.ToArray());
-					if (results.Errors.HasErrors)
-						continue;
-
 					DomainEvaluator domainEvaluator = (DomainEvaluator)evalDomain.CreateInstanceAndUnwrap ("Instant", "Instant.Evaluator+DomainEvaluator");
 					Exception ex = domainEvaluator.Evaluate (next, cparams, sources.ToArray());
 					if (ex == null)
