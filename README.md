@@ -30,7 +30,7 @@ the Visual Studio 2012 SDK is also required.
 
 1.	Launch the `Instant.VisualStudio` project from `Instant.sln`.
 1.	Bring up the quick fix menu for a method (either by hovering over the line, or
-	pressing CTRL+. with your cursor on the method.
+	pressing CTRL+. with your cursor on the method).
 1.	Enter your code to call this method. This can be multiple lines to setup arguments.
 
 Contact
