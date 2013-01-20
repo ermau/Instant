@@ -26,5 +26,5 @@ A Instant.sln.dotSettings file is included for ReSharper users.
 -	Braces on new lines (except for simple getters/setters).
 -	Spaces for methods with arguments, no space without arguments.
 -	No trailing whitespaces.
--	Use 'this.' for private fields.
+-	Use 'this.' for private fields, do not use _ in their names.
 -	Generally follow the existing style.
