@@ -49,6 +49,7 @@ namespace Instant.VisualStudio
 		public LoopViewModel()
 		{
 			this.adjustIteration = new DelegatedCommand (Adjust, CanAdjust);
+			this.setIteration = new DelegatedCommand (Set, CanSet);
 		}
 
 		public event EventHandler<IterationChangedEventArgs> IterationChanged;
@@ -56,6 +57,11 @@ namespace Instant.VisualStudio
 		public Loop Loop
 		{
 			get { return (Loop)Operation; }
+		}
+
+		public ICommand SetIteration
+		{
+			get { return this.setIteration; }
 		}
 
 		public ICommand AdjustIteration
@@ -81,6 +87,7 @@ namespace Instant.VisualStudio
 				OnPropertyChanged ("Iteration");
 				OnIterationChanged (new IterationChangedEventArgs (this.iterations[old - 1], this.iterations[value - 1]));
 				this.adjustIteration.ChangeCanExecute();
+				this.setIteration.ChangeCanExecute();
 			}
 		}
 
@@ -89,7 +96,7 @@ namespace Instant.VisualStudio
 			get { return this.iterations.Length; }
 		}
 
-		private readonly DelegatedCommand adjustIteration;
+		private readonly DelegatedCommand adjustIteration, setIteration;
 		private LoopIteration[] iterations;
 		private int iteration = 1;
 
@@ -105,6 +112,7 @@ namespace Instant.VisualStudio
 			OnPropertyChanged ("Iteration");
 			OnPropertyChanged ("TotalIterations");
 			this.adjustIteration.ChangeCanExecute();
+			this.setIteration.ChangeCanExecute();
 		}
 
 		private bool CanAdjust (object o)
@@ -119,6 +127,36 @@ namespace Instant.VisualStudio
 		{
 			int amount = (int)o;
 			Iteration += amount;
+		}
+
+		private bool CanSet (object o)
+		{
+			if (o == null)
+				return false;
+
+			int value;
+			string str = o as string;
+			if (str != null)
+			{
+				if (!Int32.TryParse (str, out value))
+					return false;
+			}
+			else
+				value = (int)o;
+
+			return (value != Iteration && value > 0 && value <= this.iterations.Length);
+		}
+
+		private void Set (object o)
+		{
+			int value;
+			string str = o as string;
+			if (str != null)
+				value = Int32.Parse (str);
+			else
+				value = (int)o;
+
+			Iteration = value;
 		}
 
 		private void OnIterationChanged (IterationChangedEventArgs e)

@@ -13,6 +13,7 @@
 			<Setter Property="FontFamily" Value="{Binding FontFamily,ElementName=loop}" />
 			<Setter Property="FontSize" Value="{Binding FontSize,ElementName=loop}" />
 			<Setter Property="Cursor" Value="Arrow" />
+			<Setter Property="Margin" Value="1,0,1,0" />
 		</Style>
 
 		<Style TargetType="TextBlock">
@@ -28,15 +29,23 @@
 			<ColumnDefinition />
 			<ColumnDefinition />
 			<ColumnDefinition />
+			<ColumnDefinition />
+			<ColumnDefinition />
 		</Grid.ColumnDefinitions>
-		
-		<Button Grid.Column="0" Command="{Binding AdjustIteration}" Content="&lt;">
+
+		<Button Grid.Column="0" Command="{Binding SetIteration}" Content="|&lt;">
+			<Button.CommandParameter>
+				<cor:Int32>1</cor:Int32>
+			</Button.CommandParameter>
+		</Button>
+
+		<Button Grid.Column="1" Command="{Binding AdjustIteration}" Content="&lt;">
 			<Button.CommandParameter>
 				<cor:Int32>-1</cor:Int32>
 			</Button.CommandParameter>
 		</Button>
 
-		<TextBlock Grid.Column="1" Margin="2,0,2,0">
+		<TextBlock Grid.Column="2" Margin="2,0,2,0">
 			<TextBlock.Text>
 				<MultiBinding StringFormat="{}{0} of {1}">
 					<Binding Path="Iteration" />
@@ -45,10 +54,12 @@
 			</TextBlock.Text>
 		</TextBlock>
 
-		<Button Grid.Column="2" Command="{Binding AdjustIteration}" Content="&gt;">
+		<Button Grid.Column="3" Command="{Binding AdjustIteration}" Content="&gt;">
 			<Button.CommandParameter>
 				<cor:Int32>1</cor:Int32>
 			</Button.CommandParameter>
 		</Button>
+
+		<Button Grid.Column="4" Command="{Binding SetIteration}" CommandParameter="{Binding TotalIterations}" Content="&gt;|" />
 	</Grid>
 </VS:InstantView>
