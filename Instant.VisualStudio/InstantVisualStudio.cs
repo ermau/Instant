@@ -30,6 +30,7 @@ using Microsoft.VisualStudio.Shell.Interop;
 using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Text.Editor;
 using Task = System.Threading.Tasks.Task;
+using Instant.ViewModels;
 
 namespace Instant.VisualStudio
 {

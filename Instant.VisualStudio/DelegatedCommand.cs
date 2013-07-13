@@ -18,7 +18,7 @@
 using System;
 using System.Windows.Input;
 
-namespace Instant.VisualStudio
+namespace Instant
 {
 	public class DelegatedCommand
 		: ICommand

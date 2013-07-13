@@ -17,7 +17,7 @@
 
 using System.ComponentModel;
 
-namespace Instant.VisualStudio
+namespace Instant.ViewModels
 {
 	public abstract class ViewModel
 		: INotifyPropertyChanged

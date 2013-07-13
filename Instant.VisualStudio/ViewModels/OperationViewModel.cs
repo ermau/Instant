@@ -15,7 +15,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-namespace Instant.VisualStudio
+namespace Instant.ViewModels
 {
 	public abstract class OperationViewModel
 		: ViewModel

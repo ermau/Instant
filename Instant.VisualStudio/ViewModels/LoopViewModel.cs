@@ -19,7 +19,7 @@ using System;
 using System.Linq;
 using System.Windows.Input;
 
-namespace Instant.VisualStudio
+namespace Instant.ViewModels
 {
 	public class IterationChangedEventArgs
 		: EventArgs
