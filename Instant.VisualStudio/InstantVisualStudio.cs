@@ -17,6 +17,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
@@ -233,8 +234,78 @@ namespace Instant.VisualStudio
 			}
 		}
 
+		private ExceptionView GetExceptionView (Exception exception)
+		{
+			return new ExceptionView {
+				DataContext = new ExceptionViewModel (exception),
+				FontFamily = FontFamily,
+				FontSize = FontSize - 1,
+				Foreground = Foreground,
+				BorderBrush = BorderBrush,
+				BorderThickness = new Thickness(1)
+			};
+		}
+
+		private Tuple<string,int> GetFileAndLine (Exception exception)
+		{
+			using (StringReader reader = new StringReader (exception.StackTrace)) {
+				string line = reader.ReadLine();
+				if (line == null || !line.Contains ("line"))
+					return Tuple.Create ((string)null, 0);
+
+				int atIndex = line.IndexOf (" in ");
+				int lineIndex = line.LastIndexOf (":line");
+
+				if (atIndex == -1 || lineIndex == -1)
+					return Tuple.Create ((string)null, 0);
+
+				string file = line.Substring (atIndex += 4, lineIndex - atIndex);
+				string lineNumber = line.Substring (lineIndex += 6, line.Length - lineIndex);
+
+				int ln;
+				if (!Int32.TryParse (lineNumber, out ln))
+					return Tuple.Create ((string)null, 0);
+
+				return Tuple.Create (file, ln);
+			}
+		}
+
+		private void AdornException (Exception ex, ITextSnapshot snapshot)
+		{
+			// TODO: Ensure the correct document
+			Tuple<string, int> location = GetFileAndLine (ex);
+			if (location.Item1 == null || location.Item2 == 0)
+				return;
+
+			ITextSnapshotLine line = snapshot.GetLineFromLineNumber (location.Item2 - 1);
+			Span lineSpan = Span.FromBounds (line.Start, line.End);
+
+			ITrackingSpan exceptionLine = snapshot.CreateTrackingSpan (lineSpan, SpanTrackingMode.EdgeExclusive);
+
+			this.dispatcher.BeginInvoke ((Action)(() =>
+			{
+				ITextSnapshot currentSnapshot = this.view.TextSnapshot;
+				SnapshotSpan currentExLine = exceptionLine.GetSpan (currentSnapshot);
+
+				Geometry g = this.view.TextViewLines.GetMarkerGeometry (currentExLine);
+				if (g == null)
+					return;
+
+				ExceptionView adorner = GetExceptionView (ex);
+
+				Canvas.SetLeft (adorner, g.Bounds.Right + 10);
+				Canvas.SetTop (adorner, g.Bounds.Top + 1);
+				//adorner.Height = g.Bounds.Height - 2;
+				//adorner.MaxHeight = g.Bounds.Height - 2;
+
+				this.layer.AddAdornment (AdornmentPositioningBehavior.TextRelative, currentExLine, null, adorner, null);
+			}));
+		}
+
 		private void OnEvaluationCompleted (object sender, EvaluationCompletedEventArgs e)
 		{
+			Tuple<ITextSnapshot, string> adornContext = (Tuple<ITextSnapshot,string>)e.Submission.Tag;
+
 			if (e.Exception != null)
 			{
 				Exception ex = e.Exception;
@@ -242,6 +313,8 @@ namespace Instant.VisualStudio
 				var target = e.Exception as TargetInvocationException;
 				if (target != null)
 					ex = target.InnerException;
+
+				AdornException (ex, adornContext.Item1);
 
 				this.statusbar.SetText (String.Format ("{0}: {1}", ex.GetType().Name, ex.Message));
 				return;
@@ -254,8 +327,6 @@ namespace Instant.VisualStudio
 			var methods = sink.GetRootCalls() ?? this.context.LastData;
 			if (methods == null || methods.Count == 0)
 				return;
-
-			Tuple<ITextSnapshot, string> adornContext = (Tuple<ITextSnapshot,string>)e.Submission.Tag;
 
 			this.dispatcher.BeginInvoke ((Action<ITextSnapshot,string,IDictionary<int,MethodCall>>)
 				((s,c,m) =>

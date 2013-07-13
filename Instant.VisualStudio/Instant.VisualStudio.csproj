@@ -125,6 +125,10 @@
     <Compile Include="InstantSmartTagProvider.cs" />
     <Compile Include="InstantTagToggleAction.cs" />
     <Compile Include="InstantSmartTagger.cs" />
+    <Compile Include="ViewModels\ExceptionViewModel.cs" />
+    <Compile Include="Views\ExceptionView.xaml.cs">
+      <DependentUpon>ExceptionView.xaml</DependentUpon>
+    </Compile>
     <Compile Include="VisualStudioExtensions.cs" />
     <Compile Include="InstantVisualStudioFactory.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
