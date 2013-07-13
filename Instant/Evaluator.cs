@@ -39,7 +39,8 @@ namespace Instant
 			Submission = submission;
 		}
 
-		public EvaluationCompletedEventArgs (Exception exception)
+		public EvaluationCompletedEventArgs (Submission submission, Exception exception)
+			: this (submission)
 		{
 			if (exception == null)
 				throw new ArgumentNullException ("exception");
@@ -179,7 +180,7 @@ namespace Instant
 					if (ex == null)
 						OnEvaluationCompleted (new EvaluationCompletedEventArgs (next));
 					else
-						OnEvaluationCompleted (new EvaluationCompletedEventArgs (ex));
+						OnEvaluationCompleted (new EvaluationCompletedEventArgs (next, ex));
 				}
 				finally
 				{
