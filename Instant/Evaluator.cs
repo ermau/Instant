@@ -146,6 +146,11 @@ namespace Instant
 
 						File.Copy (references[i], reference);
 
+						string pdbName = Path.GetFileNameWithoutExtension (references [i]) + ".pdb";
+						string pdb = Path.Combine (Path.GetDirectoryName (references [i]), pdbName);
+						if (File.Exists (pdb))
+							File.Copy (pdb, Path.Combine (setup.ApplicationBase, pdbName));
+
 						references[i] = reference;
 					}
 

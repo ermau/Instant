@@ -64,6 +64,8 @@ namespace Instant
 				builder.Append (self.DefinedConstants);
 			}
 
+			builder.Append (" /debug");
+
 			return builder.ToString();
 		}
 	}
