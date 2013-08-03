@@ -17,6 +17,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Threading.Tasks;
 using ICSharpCode.NRefactory.CSharp;
 
@@ -24,6 +25,20 @@ namespace Instant
 {
 	public static class Extensions
 	{
+		public static IEnumerable<StackFrame> GetStackFrames (this Exception exception)
+		{
+			using (StringReader reader = new StringReader (exception.StackTrace)) {
+				string line;
+				while ((line = reader.ReadLine()) != null) {
+					StackFrame frame;
+					if (!StackFrame.TryParse (line, out frame))
+						yield break;
+
+					yield return frame;
+				}
+			}
+		}
+
 		public static void InsertBefore (this BlockStatement self, AstNode nextSibling, Expression expression)
 		{
 			if (self == null)

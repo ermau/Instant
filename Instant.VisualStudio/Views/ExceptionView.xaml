@@ -5,6 +5,22 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              mc:Ignorable="d">
 	<Border>
-		<Expander Header="{Binding Exception.Message}" Content="{Binding Exception.StackTrace}" />
+		<Expander Header="{Binding Exception.Message}">
+			<ListBox ItemsSource="{Binding Frames}">
+				<ListBox.ItemTemplate>
+					<DataTemplate>
+						<TextBlock>
+							<TextBlock.Text>
+								<MultiBinding StringFormat="at {0} in {1}:line {2}">
+									<Binding Path="Method" />
+									<Binding Path="File" />
+									<Binding Path="Line" />
+								</MultiBinding>
+							</TextBlock.Text>
+						</TextBlock>
+					</DataTemplate>
+				</ListBox.ItemTemplate>
+			</ListBox>
+		</Expander>
 	</Border>
 </UserControl>

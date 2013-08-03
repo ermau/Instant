@@ -251,38 +251,14 @@ namespace Instant.VisualStudio
 			};
 		}
 
-		private Tuple<string,int> GetFileAndLine (Exception exception)
-		{
-			using (StringReader reader = new StringReader (exception.StackTrace)) {
-				string line = reader.ReadLine();
-				if (line == null || !line.Contains ("line"))
-					return Tuple.Create ((string)null, 0);
-
-				int atIndex = line.IndexOf (" in ");
-				int lineIndex = line.LastIndexOf (":line");
-
-				if (atIndex == -1 || lineIndex == -1)
-					return Tuple.Create ((string)null, 0);
-
-				string file = line.Substring (atIndex += 4, lineIndex - atIndex);
-				string lineNumber = line.Substring (lineIndex += 6, line.Length - lineIndex);
-
-				int ln;
-				if (!Int32.TryParse (lineNumber, out ln))
-					return Tuple.Create ((string)null, 0);
-
-				return Tuple.Create (file, ln);
-			}
-		}
-
 		private void AdornException (Exception ex, ITextSnapshot snapshot)
 		{
 			// TODO: Ensure the correct document
-			Tuple<string, int> location = GetFileAndLine (ex);
-			if (location.Item1 == null || location.Item2 == 0)
+			StackFrame frame = ex.GetStackFrames().FirstOrDefault();
+			if (frame == null)
 				return;
 
-			ITextSnapshotLine line = snapshot.GetLineFromLineNumber (location.Item2 - 1);
+			ITextSnapshotLine line = snapshot.GetLineFromLineNumber (frame.Line - 1);
 			Span lineSpan = Span.FromBounds (line.Start, line.End);
 
 			ITrackingSpan exceptionLine = snapshot.CreateTrackingSpan (lineSpan, SpanTrackingMode.EdgeExclusive);

@@ -28,9 +28,16 @@ namespace Instant.ViewModels
 				throw new ArgumentNullException ("exception");
 
 			Exception = exception;
+			Frames = exception.GetStackFrames().ToArray();
 		}
 
 		public Exception Exception
+		{
+			get;
+			private set;
+		}
+
+		public StackFrame[] Frames
 		{
 			get;
 			private set;
