@@ -32,7 +32,7 @@ namespace Instant.VisualStudio
 		public static IProject GetProject (this _DTE dte, Document currentDoc, string code)
 		{
 			Project instantProject = new Project();
-			instantProject.Sources.Add (Either<FileInfo, string>.B (code));
+			instantProject.Sources.Add (Either<FileInfo, LiveSource>.B (new LiveSource (currentDoc.FullName, code)));
 
 			EnvDTE.Project project = currentDoc.ProjectItem.ContainingProject;
 
@@ -86,7 +86,7 @@ namespace Instant.VisualStudio
 							if (path == currentDoc.FullName)
 								continue;
 
-							project.Sources.Add (Either<FileInfo, string>.A (new FileInfo (path)));
+							project.Sources.Add (Either<FileInfo, LiveSource>.A (new FileInfo (path)));
 						}
 					}
 				}

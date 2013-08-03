@@ -239,10 +239,21 @@ namespace Instant.VisualStudio
 			}
 		}
 
-		private ExceptionView GetExceptionView (Exception exception)
+		private ExceptionView GetExceptionView (Submission submission, Exception exception)
 		{
+			StackFrame[] cleanedFrames = exception.GetStackFrames().TakeAllBut (1).ToArray();
+			for (int i = 0; i < cleanedFrames.Length; i++) {
+				StackFrame frame = cleanedFrames[i];
+				LiveSource source = null;
+				if (!submission.Project.Sources.Any (e => e.Fold (f => f.FullName == frame.File, s => { source = s; return false; }))) {
+					// HACK: We only support 1 live document at the moment, but this will break when that changes
+					cleanedFrames[i] = new StackFrame (frame.Method, source.FileName, frame.Line);
+					break;
+				}
+			}
+
 			return new ExceptionView {
-				DataContext = new ExceptionViewModel (exception),
+				DataContext = new ExceptionViewModel (exception, cleanedFrames),
 				FontFamily = FontFamily,
 				FontSize = FontSize - 1,
 				Foreground = Foreground,
@@ -251,7 +262,7 @@ namespace Instant.VisualStudio
 			};
 		}
 
-		private void AdornException (Exception ex, ITextSnapshot snapshot)
+		private void AdornException (Submission submission, Exception ex, ITextSnapshot snapshot)
 		{
 			// TODO: Ensure the correct document
 			StackFrame frame = ex.GetStackFrames().FirstOrDefault();
@@ -263,7 +274,7 @@ namespace Instant.VisualStudio
 
 			ITrackingSpan exceptionLine = snapshot.CreateTrackingSpan (lineSpan, SpanTrackingMode.EdgeExclusive);
 
-			this.dispatcher.BeginInvoke ((Action)(() => this.lineAdorners.AddAdorner (exceptionLine, GetExceptionView (ex))));
+			this.dispatcher.BeginInvoke ((Action)(() => this.lineAdorners.AddAdorner (exceptionLine, GetExceptionView (submission, ex))));
 		}
 
 		private void OnEvaluationCompleted (object sender, EvaluationCompletedEventArgs e)
@@ -278,7 +289,7 @@ namespace Instant.VisualStudio
 				if (target != null)
 					ex = target.InnerException;
 
-				AdornException (ex, adornContext.Item1);
+				AdornException (e.Submission, ex, adornContext.Item1);
 				this.dispatcher.Invoke (() => {
 					ClearUnusedViews();
 					this.statusbar.SetText (String.Format ("{0}: {1}", ex.GetType().Name, ex.Message));

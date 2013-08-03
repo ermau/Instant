@@ -19,7 +19,7 @@ using System;
 
 namespace Instant
 {
-	public class Submission
+	public sealed class Submission
 		: MarshalByRefObject
 	{
 		public Submission (int submissionId, IProject project, IInstrumentationSink instrumentationSink, string evalCode)

@@ -21,7 +21,7 @@ using Cadenza;
 
 namespace Instant
 {
-	public class Project
+	public sealed class Project
 		: IProject
 	{
 		public string DefinedConstants
@@ -47,12 +47,12 @@ namespace Instant
 			get { return this.references; }
 		}
 
-		public ICollection<Either<FileInfo, string>> Sources
+		public ICollection<Either<FileInfo, LiveSource>> Sources
 		{
 			get { return this.sources; }
 		}
 
-		private readonly List<Either<FileInfo, string>> sources = new List<Either<FileInfo, string>>();
+		private readonly List<Either<FileInfo, LiveSource>> sources = new List<Either<FileInfo, LiveSource>>();
 		private readonly HashSet<string> references = new HashSet<string>();
 
 		IEnumerable<string> IProject.References
@@ -60,7 +60,7 @@ namespace Instant
 			get { return References; }
 		}
 
-		IEnumerable<Either<FileInfo, string>> IProject.Sources
+		IEnumerable<Either<FileInfo, LiveSource>> IProject.Sources
 		{
 			get { return Sources; }
 		}

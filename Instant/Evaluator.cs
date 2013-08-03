@@ -170,7 +170,7 @@ namespace Instant
 					string evalSource = "namespace Instant.User { static class Evaluation { static void Evaluate() {" + next.EvalCode + Environment.NewLine + " } } }";
  
 					List<string> sources = next.Project.Sources.AsParallel().Select (
-							e => e.Fold (async f => await f.OpenText().ReadToEndAsync(), Task.FromResult)
+							e => e.Fold (async f => await f.OpenText().ReadToEndAsync(), ls => Task.FromResult (ls.Source))
 						).ToListAsync().Result;
 
 					sources.Add (evalSource);

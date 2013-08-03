@@ -16,20 +16,20 @@
 // limitations under the License.
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace Instant.ViewModels
 {
 	public class ExceptionViewModel
 	{
-		public ExceptionViewModel (Exception exception)
+		public ExceptionViewModel (Exception exception, IEnumerable<StackFrame> cleanedFrames)
 		{
 			if (exception == null)
 				throw new ArgumentNullException ("exception");
 
 			Exception = exception;
-			// Skip the Evaluator frame
-			Frames = exception.GetStackFrames().TakeAllBut (1).ToArray();
+			Frames = cleanedFrames.ToArray();
 		}
 
 		public Exception Exception

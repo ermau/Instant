@@ -23,6 +23,32 @@ using Cadenza;
 
 namespace Instant
 {
+	public sealed class LiveSource
+	{
+		public LiveSource (string fileName, string source)
+		{
+			if (fileName == null)
+				throw new ArgumentNullException ("fileName");
+			if (source == null)
+				throw new ArgumentNullException ("source");
+
+			FileName = fileName;
+			Source = source;
+		}
+
+		public string FileName
+		{
+			get;
+			private set;
+		}
+
+		public string Source
+		{
+			get;
+			private set;
+		}
+	}
+
 	public interface IProject
 	{
 		/// <summary>
@@ -41,7 +67,7 @@ namespace Instant
 		bool Optimize { get; }
 
 		IEnumerable<string> References { get; }
-		IEnumerable<Either<FileInfo,string>> Sources { get; }
+		IEnumerable<Either<FileInfo, LiveSource>> Sources { get; }
 	}
 
 	public static class ProjectExtensions

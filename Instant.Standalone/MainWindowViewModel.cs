@@ -230,7 +230,7 @@ namespace Instant.Standalone
 				return;
 
 			Project project = new Project();
-			project.Sources.Add (Either<FileInfo, string>.B (instrumented));
+			project.Sources.Add (Either<FileInfo, LiveSource>.B (new LiveSource ("none.cs", instrumented)));
 
 			Submission s = null;
 			var sink = new MemoryInstrumentationSink (() => s.IsCanceled);
