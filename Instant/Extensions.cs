@@ -18,6 +18,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using ICSharpCode.NRefactory.CSharp;
 
@@ -36,6 +37,38 @@ namespace Instant
 
 					yield return frame;
 				}
+			}
+		}
+
+		public static IEnumerable<T> TakeAllBut<T> (this IEnumerable<T> self, int count)
+		{
+			ICollection<T> collection = self as ICollection<T>;
+			if (collection != null)
+				return collection.Take (collection.Count - count);
+
+			IReadOnlyCollection<T> roCollection = self as IReadOnlyCollection<T>;
+			if (roCollection != null)
+				return roCollection.Take (roCollection.Count - count);
+
+			return GetTakeAllButEnumerable (self, count);
+		}
+
+		static IEnumerable<T> GetTakeAllButEnumerable<T> (IEnumerable<T> self, int count)
+		{
+			Queue<T> queue = new Queue<T> (count + 1);
+			IEnumerator<T> it = self.GetEnumerator();
+			try {
+				bool remainingItems;
+				do {
+					if (remainingItems = it.MoveNext()) {
+						queue.Enqueue (it.Current);
+						if (queue.Count > count)
+							yield return queue.Dequeue();
+					}
+				} while (remainingItems);
+			} finally {
+				if (it != null)
+					it.Dispose();
 			}
 		}
 

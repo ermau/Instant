@@ -28,7 +28,8 @@ namespace Instant.ViewModels
 				throw new ArgumentNullException ("exception");
 
 			Exception = exception;
-			Frames = exception.GetStackFrames().ToArray();
+			// Skip the Evaluator frame
+			Frames = exception.GetStackFrames().TakeAllBut (1).ToArray();
 		}
 
 		public Exception Exception
