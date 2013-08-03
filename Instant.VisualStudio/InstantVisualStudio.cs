@@ -46,6 +46,8 @@ namespace Instant.VisualStudio
 			//Listen to any event that changes the layout (text changes, scrolling, etc)
 			this.view.LayoutChanged += OnLayoutChanged;
 
+			this.lineAdorners = new AdornmentManager (view);
+
 			this.dispatcher = Dispatcher.CurrentDispatcher;
 
 			this.evaluator.EvaluationCompleted += OnEvaluationCompleted;
@@ -136,12 +138,15 @@ namespace Instant.VisualStudio
 
 			if (this.context.Version != e.NewSnapshot.Version) // Text changed
 			{
+				this.layer.RemoveAllAdornments();
+				this.lineAdorners.Clear();
 				this.context.LineMap = null;
 				this.context.Version = e.NewSnapshot.Version;
 				Execute (e.NewSnapshot, GetCancelSource().Token);
-			}
-			else
+			} else {
 				AdornCode (e.NewSnapshot, GetCancelSource (current: true).Token);
+				this.lineAdorners.Update (e.NewOrReformattedSpans);
+			}
 		}
 
 		// We can likely set up a cache for all these, just need to ensure they're
@@ -282,24 +287,7 @@ namespace Instant.VisualStudio
 
 			ITrackingSpan exceptionLine = snapshot.CreateTrackingSpan (lineSpan, SpanTrackingMode.EdgeExclusive);
 
-			this.dispatcher.BeginInvoke ((Action)(() =>
-			{
-				ITextSnapshot currentSnapshot = this.view.TextSnapshot;
-				SnapshotSpan currentExLine = exceptionLine.GetSpan (currentSnapshot);
-
-				Geometry g = this.view.TextViewLines.GetMarkerGeometry (currentExLine);
-				if (g == null)
-					return;
-
-				ExceptionView adorner = GetExceptionView (ex);
-
-				Canvas.SetLeft (adorner, g.Bounds.Right + 10);
-				Canvas.SetTop (adorner, g.Bounds.Top + 1);
-				//adorner.Height = g.Bounds.Height - 2;
-				//adorner.MaxHeight = g.Bounds.Height - 2;
-
-				this.layer.AddAdornment (AdornmentPositioningBehavior.TextRelative, currentExLine, null, adorner, null);
-			}));
+			this.dispatcher.BeginInvoke ((Action)(() => this.lineAdorners.AddAdorner (exceptionLine, GetExceptionView (ex))));
 		}
 
 		private void OnEvaluationCompleted (object sender, EvaluationCompletedEventArgs e)
@@ -315,8 +303,10 @@ namespace Instant.VisualStudio
 					ex = target.InnerException;
 
 				AdornException (ex, adornContext.Item1);
-
-				this.statusbar.SetText (String.Format ("{0}: {1}", ex.GetType().Name, ex.Message));
+				this.dispatcher.Invoke (() => {
+					ClearUnusedViews();
+					this.statusbar.SetText (String.Format ("{0}: {1}", ex.GetType().Name, ex.Message));
+				});
 				return;
 			}
 
@@ -398,18 +388,23 @@ namespace Instant.VisualStudio
 				MethodCall container = methods.Values.First();
 				AdornOperationContainer (container, snapshot, this.context.LineMap, cancelToken);
 
-				foreach (ViewCache viewCache in this.views.Values)
-				{
-					InstantView[] cleared = viewCache.ClearViews();
-					for (int i = 0; i < cleared.Length; i++)
-						this.layer.RemoveAdornment (cleared[i]);
-				}
+				ClearUnusedViews();
 			}
 			catch (OperationCanceledException)
 			{
 			}
 		}
 
+		private void ClearUnusedViews()
+		{
+			foreach (ViewCache viewCache in this.views.Values) {
+				InstantView[] cleared = viewCache.ClearViews();
+				for (int i = 0; i < cleared.Length; i++)
+					this.layer.RemoveAdornment (cleared[i]);
+			}
+		}
+
+		private readonly AdornmentManager lineAdorners;
 		private readonly Dictionary<Type, ViewCache> views = new Dictionary<Type, ViewCache>();
 		private void AdornOperationContainer (OperationContainer container, ITextSnapshot snapshot, LineMap lineMap, CancellationToken cancelToken)
 		{
