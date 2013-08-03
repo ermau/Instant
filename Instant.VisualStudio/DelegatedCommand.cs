@@ -1,7 +1,7 @@
 ﻿//
 // DelegatedCommand.cs
 //
-// Copyright 2012 Eric Maupin
+// Copyright 2012-2013 Eric Maupin
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,11 +16,52 @@
 // limitations under the License.
 
 using System;
+using System.Security.Permissions;
 using System.Windows.Input;
 
 namespace Instant
 {
-	public class DelegatedCommand
+	public sealed class DelegatedCommand<T>
+		: ICommand
+	{
+		public DelegatedCommand (Action<T> execute, Func<T, bool> canExecute)
+		{
+			if (execute == null)
+				throw new ArgumentNullException ("execute");
+			if (canExecute == null)
+				throw new ArgumentNullException ("canExecute");
+
+			this.execute = execute;
+			this.canExecute = canExecute;
+		}
+
+		public event EventHandler CanExecuteChanged;
+		
+		public void Execute (T parameter)
+		{
+			this.execute (parameter);
+		}
+
+		public bool CanExecute (T parameter)
+		{
+			return this.canExecute (parameter);
+		}
+
+		bool ICommand.CanExecute (object parameter)
+		{
+			return CanExecute ((T)parameter);
+		}
+
+		void ICommand.Execute (object parameter)
+		{
+			Execute ((T)parameter);
+		}
+
+		private readonly Action<T> execute;
+		private readonly Func<T, bool> canExecute;
+	}
+
+	public sealed class DelegatedCommand
 		: ICommand
 	{
 		public DelegatedCommand (Action<object> execute, Func<object, bool> canExecute)
