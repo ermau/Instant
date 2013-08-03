@@ -99,7 +99,7 @@ namespace Instant.VisualStudio
 				{
 					return null;
 				}
-			}, cancelToken);
+			}, cancelToken, TaskCreationOptions.None, TaskScheduler.Default);
 		}
 	}
 }
