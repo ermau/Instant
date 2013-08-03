@@ -119,11 +119,11 @@ namespace Instant
 					continue;
 
 				AppDomain evalDomain = null;
-				try
-				{
+				try {
+					string instantDir = GetInstantDir();
 					AppDomainSetup setup = new AppDomainSetup
 					{
-						ApplicationBase = GetInstantDir(),
+						ApplicationBase = instantDir,
 						LoaderOptimization = LoaderOptimization.MultiDomainHost
 					};
 					evalDomain = AppDomain.CreateDomain ("Instant Evaluation", null, setup);
@@ -167,16 +167,22 @@ namespace Instant
 					cparams.CompilerOptions = next.Project.GetCompilerOptions();
 
 					// HACK: Wrap test code into a proper method
+					string evalCsPath = Path.Combine (instantDir, "Source", Path.GetRandomFileName());
 					string evalSource = "namespace Instant.User { static class Evaluation { static void Evaluate() {" + next.EvalCode + Environment.NewLine + " } } }";
+					File.WriteAllText (evalCsPath, evalSource);
  
-					List<string> sources = next.Project.Sources.AsParallel().Select (
-							e => e.Fold (async f => await f.OpenText().ReadToEndAsync(), ls => Task.FromResult (ls.Source))
-						).ToListAsync().Result;
+					var paths = next.Project.Sources.Select (
+							e => e.Fold (f => f.FullName, ls => {
+								string path = Path.Combine (instantDir, "Source", Path.GetFileName (ls.FileName));
+								File.WriteAllText (path, ls.Source);
+								return path;
+							})
+						);
 
-					sources.Add (evalSource);
+					paths = paths.Concat (evalCsPath);
 
 					DomainEvaluator domainEvaluator = (DomainEvaluator)evalDomain.CreateInstanceAndUnwrap ("Instant", "Instant.Evaluator+DomainEvaluator");
-					Exception ex = domainEvaluator.Evaluate (next, cparams, sources.ToArray());
+					Exception ex = domainEvaluator.Evaluate (next, cparams, paths.ToArray());
 					if (ex == null)
 						OnEvaluationCompleted (new EvaluationCompletedEventArgs (next));
 					else
@@ -207,10 +213,10 @@ namespace Instant
 		private class DomainEvaluator
 			: MarshalByRefObject
 		{
-			public Exception Evaluate (Submission submission, CompilerParameters cparams, string[] sources)
+			public Exception Evaluate (Submission submission, CompilerParameters cparams, string[] paths)
 			{
 				CSharpCodeProvider provider = new CSharpCodeProvider();
-				CompilerResults results = provider.CompileAssemblyFromSource (cparams, sources);
+				CompilerResults results = provider.CompileAssemblyFromFile (cparams, paths);
 				if (results.Errors.HasErrors)
 					return null;
 
@@ -247,6 +253,7 @@ namespace Instant
 				try
 				{
 					Directory.CreateDirectory (path);
+					Directory.CreateDirectory (Path.Combine (path, "Source"));
 					created = true;
 				}
 				catch (IOException)
