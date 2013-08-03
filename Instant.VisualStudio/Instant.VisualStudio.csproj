@@ -122,6 +122,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="DelegatedCommand.cs" />
+    <Compile Include="InstantCommands.cs" />
+    <Compile Include="InstantCommands.VisualStudio.cs" />
     <Compile Include="InstantSmartTagProvider.cs" />
     <Compile Include="InstantTagToggleAction.cs" />
     <Compile Include="InstantSmartTagger.cs" />

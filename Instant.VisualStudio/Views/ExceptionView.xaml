@@ -6,7 +6,7 @@
              mc:Ignorable="d">
 	<Border>
 		<Expander Header="{Binding Exception.Message}">
-			<ListBox ItemsSource="{Binding Frames}">
+			<ListBox Name="frames" ItemsSource="{Binding Frames}" MouseDoubleClick="OnFrameSelected">
 				<ListBox.ItemTemplate>
 					<DataTemplate>
 						<TextBlock>
