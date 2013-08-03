@@ -50,7 +50,7 @@ namespace Instant
 					return Either<string, Error>.B (error);
 
 				return Either<string, Error>.A (tree.GetText());
-			}, code);
+			}, code, TaskCreationOptions.HideScheduler);
 		}
 	}
 }
