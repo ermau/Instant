@@ -244,12 +244,13 @@ namespace Instant.VisualStudio
 			StackFrame[] cleanedFrames = exception.GetStackFrames().TakeAllBut (1).ToArray();
 			for (int i = 0; i < cleanedFrames.Length; i++) {
 				StackFrame frame = cleanedFrames[i];
-				LiveSource source = null;
-				if (!submission.Project.Sources.Any (e => e.Fold (f => f.FullName == frame.File, s => { source = s; return false; }))) {
-					// HACK: We only support 1 live document at the moment, but this will break when that changes
-					cleanedFrames[i] = new StackFrame (frame.Method, source.FileName, frame.Line);
-					break;
-				}
+				// TODO: Make robust against same filename in two separate subdirs
+				string fullPath = submission.Project.Sources
+					.Select (e => e.Fold (fi => fi.FullName, ls => ls.FileName))
+					.FirstOrDefault (p => Path.GetFileName (p) == Path.GetFileName (frame.File));
+
+				if (fullPath != null)
+					cleanedFrames[i] = new StackFrame (frame.Method, fullPath, frame.Line);
 			}
 
 			return new ExceptionView {
